@@ -45,11 +45,3 @@ def str2timedelta(delta: str) -> Optional[timedelta]:
         return None
     return timedelta(days=digits[0] // 24, hours=digits[0] % 24,
                      minutes=digits[1], seconds=digits[2])
-
-
-def timedelta2str(delta: Optional[timedelta]) -> str:
-    if not delta:
-        return ''
-    seconds = int(delta.total_seconds())
-    return \
-        f'{seconds // 3600:02}:{(seconds % 3600) // 60:02}:{seconds % 60:02}'
