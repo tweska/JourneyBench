@@ -134,11 +134,20 @@ class NetworkWriter:
 
         stop_times = []
         for stop_id, arrival_time, departure_time in zip(stop_ids, arrival_times, departure_times):
+            if arrival_time > self.end or departure_time < self.start:
+                continue
+            if arrival_time < self.start:
+                arrival_time = departure_time
+            if departure_time > self.end:
+                departure_time = arrival_time
+
             stop_times.append(NetworkStopTime(
                 self.__stop_map[stop_id],
                 int((arrival_time - self.start).total_seconds()),
                 int((departure_time - self.start).total_seconds()),
             ))
+        if len(stop_times) < 2:
+            return
         self.trips.append(NetworkTrip(stop_times))
 
     def add_path(

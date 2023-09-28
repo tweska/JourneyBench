@@ -10,6 +10,9 @@ venv/
 # Protobuf generated files
 *_pb2.py
 
+# Input data
+data/
+
 # Editors
 .idea/
 .vscode/
