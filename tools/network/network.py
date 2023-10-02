@@ -53,16 +53,15 @@ class NetworkWriter:
         pb_network.station_count = self.station_count
         pb_network.trip_count = self.trip_count
 
-        stop_count = 0
-        for stop in self.stops:
-            stop.stop_id = stop_count
-            stop_count += 1
-
+        self.stops.sort(key=lambda s: s.station_id)
+        for stop_id, stop in enumerate(self.stops):
+            stop.stop_id = stop_id
             pb_stop: PBNetworkStop = pb_network.stops.add()
             pb_stop.station_id = stop.station_id
             pb_stop.latitude = stop.latitude
             pb_stop.longitude = stop.longitude
 
+        self.conns.sort(key=lambda c: c.departure_time)
         for conn in self.conns:
             pb_conn: PBNetworkConn = pb_network.conns.add()
             pb_conn.trip_id = conn.trip_id
@@ -71,6 +70,7 @@ class NetworkWriter:
             pb_conn.departure_time = conn.departure_time
             pb_conn.arrival_time = conn.arrival_time
 
+        self.paths.sort(key=lambda p: p.from_stop.stop_id)
         for path in self.paths:
             pb_path: PBNetworkPath = pb_network.paths.add()
             pb_path.from_stop_id = path.from_stop.stop_id
