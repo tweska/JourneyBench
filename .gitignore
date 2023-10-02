@@ -1,3 +1,6 @@
+# Compiled (shared) objects
+*.o
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -9,6 +12,8 @@ venv/
 
 # Protobuf generated files
 *_pb2.py
+*.pb.cc
+*.pb.h
 
 # Input data
 data/
