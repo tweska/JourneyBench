@@ -37,7 +37,7 @@ public:
     }
 
     int run_preprocessing() {
-        if (network == NULL || algorithm == NULL || (algorithm_eat == NULL && algorithm_eat == NULL)) { return -1; }
+        if (network == NULL || algorithm == NULL || (algorithm_eat == NULL && algorithm_bic == NULL)) { return -1; }
         return algorithm->init(network);
     }
 
