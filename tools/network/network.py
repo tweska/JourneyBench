@@ -3,31 +3,24 @@ from datetime import datetime, timedelta
 from gzip import open as gzip_open
 from typing import Any, Dict, List, Optional
 
-from .network_pb2 import PBNetwork, PBNetworkPath, PBNetworkStation, PBNetworkStop, PBNetworkStopTime, PBNetworkTrip
+from .network_pb2 import PBNetwork, PBNetworkConn, PBNetworkPath, PBNetworkStop
 
 
 @dataclass(eq=False)
 class NetworkStop:
+    station_id: int
     latitude: float
     longitude: float
-    id: Optional[int] = None
+    stop_id: Optional[int] = None
 
 
 @dataclass(eq=False)
-class NetworkStation:
-    stops: List[NetworkStop] = field(default_factory=list)
-
-
-@dataclass(eq=False)
-class NetworkStopTime:
-    stop: NetworkStop
-    arrival_time: int
+class NetworkConn:
+    trip_id: int
+    from_stop: NetworkStop
+    to_stop: NetworkStop
     departure_time: int
-
-
-@dataclass(eq=False)
-class NetworkTrip:
-    stop_times: List[NetworkStopTime]
+    arrival_time: int
 
 
 @dataclass(eq=False)
@@ -42,48 +35,46 @@ class NetworkWriter:
     start: datetime
     end: datetime
 
-    stations: List[NetworkStation] = field(default_factory=list)
-    trips: List[NetworkTrip] = field(default_factory=list)
+    stops: List[NetworkStop] = field(default_factory=list)
+    conns: List[NetworkConn] = field(default_factory=list)
     paths: List[NetworkPath] = field(default_factory=list)
 
     __stop_map: Dict[Any, NetworkStop] = field(default_factory=dict)
-    __station_map: Dict[Any, NetworkStation] = field(default_factory=dict)
-
-    @property
-    def stops(self) -> List[NetworkStop]:
-        return [stop for station in self.stations for stop in station.stops]
+    __station_map: Dict[Any, int] = field(default_factory=dict)
+    __station_count: int = 0
+    __trip_map: Dict[Any, int] = field(default_factory=dict)
 
     def write(
             self,
             filepath: str,
             compress_copy: bool = False,
     ) -> None:
-        stop_count = 0
-
         pb_network: PBNetwork = PBNetwork()
+        pb_network.station_count = self.station_count
+        pb_network.trip_count = self.trip_count
 
-        for station in self.stations:
-            pb_station: PBNetworkStation = pb_network.stations.add()
-            for stop in station.stops:
-                stop.id = stop_count
-                stop_count += 1
+        stop_count = 0
+        for stop in self.stops:
+            stop.stop_id = stop_count
+            stop_count += 1
 
-                pb_stop: PBNetworkStop = pb_station.stops.add()
-                pb_stop.latitude = stop.latitude
-                pb_stop.longitude = stop.longitude
+            pb_stop: PBNetworkStop = pb_network.stops.add()
+            pb_stop.station_id = stop.station_id
+            pb_stop.latitude = stop.latitude
+            pb_stop.longitude = stop.longitude
 
-        for trip in self.trips:
-            pb_trip: PBNetworkTrip = pb_network.trips.add()
-            for stop_time in trip.stop_times:
-                pb_stop_time: PBNetworkStopTime = pb_trip.stop_times.add()
-                pb_stop_time.stop_id = stop_time.stop.id
-                pb_stop_time.arrival_time = stop_time.arrival_time
-                pb_stop_time.departure_time = stop_time.departure_time
+        for conn in self.conns:
+            pb_conn: PBNetworkConn = pb_network.conns.add()
+            pb_conn.trip_id = conn.trip_id
+            pb_conn.from_stop_id = conn.from_stop.stop_id
+            pb_conn.to_stop_id = conn.to_stop.stop_id
+            pb_conn.departure_time = conn.departure_time
+            pb_conn.arrival_time = conn.arrival_time
 
         for path in self.paths:
             pb_path: PBNetworkPath = pb_network.paths.add()
-            pb_path.from_stop_id = path.from_stop.id
-            pb_path.to_stop_id = path.to_stop.id
+            pb_path.from_stop_id = path.from_stop.stop_id
+            pb_path.to_stop_id = path.to_stop.stop_id
             pb_path.duration = path.duration
 
         serialized_data = pb_network.SerializeToString()
@@ -110,45 +101,46 @@ class NetworkWriter:
             if station_id in self.__station_map:
                 station = self.__station_map[station_id]
             else:
-                self.__station_map[station_id] = station = NetworkStation()
-                self.stations.append(station)
+                station = self.__station_map[station_id] = self.__station_count
+                self.__station_count += 1
         else:
-            station = NetworkStation()
-            self.stations.append(station)
+            station = self.__station_count
+            self.__station_count += 1
 
-        new_stop = NetworkStop(latitude, longitude)
+        new_stop = NetworkStop(station, latitude, longitude)
         self.__stop_map[stop_id] = new_stop
-        station.stops.append(new_stop)
+        self.stops.append(new_stop)
 
-    def add_trip(
+    def add_conn(
             self,
-            stop_ids: List[Any],
-            arrival_times: List[datetime],
-            departure_times: List[datetime],
-    ) -> None:
-        if not (len(stop_ids) == len(arrival_times) == len(departure_times)):
-            raise Exception("Number of stops, arrival times and departure times must be equal!")
-        for stop_id in stop_ids:
-            if stop_id not in self.__stop_map:
-                raise Exception(f"Trip cannot be registered at unknown stop with ID '{stop_id}'!")
-
-        stop_times = []
-        for stop_id, arrival_time, departure_time in zip(stop_ids, arrival_times, departure_times):
-            if arrival_time > self.end or departure_time < self.start:
-                continue
-            if arrival_time < self.start:
-                arrival_time = departure_time
-            if departure_time > self.end:
-                departure_time = arrival_time
-
-            stop_times.append(NetworkStopTime(
-                self.__stop_map[stop_id],
-                int((arrival_time - self.start).total_seconds()),
-                int((departure_time - self.start).total_seconds()),
-            ))
-        if len(stop_times) < 2:
+            trip_id: Any,
+            from_stop_id: Any,
+            to_stop_id: Any,
+            departure_time: datetime,
+            arrival_time: datetime,
+    ):
+        if from_stop_id not in self.__stop_map:
+            raise Exception(f"From stop with ID '{from_stop_id}' is not registered!")
+        if to_stop_id not in self.__stop_map:
+            raise Exception(f"To stop with ID '{to_stop_id}' is not registered!")
+        if departure_time < self.start:
             return
-        self.trips.append(NetworkTrip(stop_times))
+        if departure_time > arrival_time:
+            raise Exception("Departure time cannot be later than arrival time!")
+
+        trip = self.__trip_map.setdefault(trip_id, len(self.__trip_map))
+        from_stop = self.__stop_map[from_stop_id]
+        to_stop = self.__stop_map[to_stop_id]
+        departure = int((departure_time - self.start).total_seconds())
+        arrival = int((arrival_time - self.start).total_seconds())
+
+        self.conns.append(NetworkConn(
+            trip,
+            from_stop,
+            to_stop,
+            departure,
+            arrival,
+        ))
 
     def add_path(
             self,
@@ -157,16 +149,38 @@ class NetworkWriter:
             duration: timedelta,
     ) -> None:
         if from_stop_id not in self.__stop_map:
-            raise Exception(f"Path from stop with ID '{from_stop_id}' cannot be registered! Stop is not registered.")
+            raise Exception(f"From stop with ID '{from_stop_id}' is not registered!")
         if to_stop_id not in self.__stop_map:
-            raise Exception(f"Path to stop with ID '{to_stop_id}' cannot be registered! Stop is not yet registered.")
+            raise Exception(f"To stop with ID '{to_stop_id}' is not registered!")
         if duration < timedelta(seconds=0):
             raise Exception("Path with negative duration cannot be registered!")
 
-        from_stop, to_stop = self.__stop_map[from_stop_id], self.__stop_map[to_stop_id]
+        from_stop = self.__stop_map[from_stop_id]
+        to_stop = self.__stop_map[to_stop_id]
+
         for path in self.paths:
             if path.from_stop == from_stop and path.to_stop == to_stop:
                 raise Exception(f"Path from stop with ID '{from_stop_id}' to stop with ID '{to_stop_id}' is already "
                                 f"registered!")
 
         self.paths.append(NetworkPath(from_stop, to_stop, int(duration.total_seconds())))
+
+    @property
+    def stop_count(self):
+        return len(self.stops)
+
+    @property
+    def conn_count(self):
+        return len(self.conns)
+
+    @property
+    def path_count(self):
+        return len(self.paths)
+
+    @property
+    def station_count(self):
+        return self.__station_count
+
+    @property
+    def trip_count(self):
+        return len(self.__trip_map)

@@ -25,14 +25,22 @@ def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> NetworkWriter:
     trip_stop_time_dict = generate_trip_stop_time_dict(gtfs)
 
     cur_date = start_date - timedelta(days=1)  # include previous day in initial search
+    trip_id = 0
     while cur_date <= end_date:
         for trip in date_trip_dict[cur_date]:
             stop_times = [gtfs.stop_times[index] for index in trip_stop_time_dict[trip]]
             stops = [st.stop_id for st in stop_times]
             arrivals = [datetime.combine(cur_date, time.min) + st.arrival_time for st in stop_times]
             departures = [datetime.combine(cur_date, time.min) + st.departure_time for st in stop_times]
-            network.add_trip(stops, arrivals, departures)
-
+            for i in range(len(stops)-1):
+                network.add_conn(
+                    trip_id,
+                    stops[i],
+                    stops[i+1],
+                    departures[i],
+                    arrivals[i+1],
+                )
+            trip_id += 1
         cur_date += timedelta(days=1)
 
     # Register transfers as paths
@@ -93,10 +101,10 @@ def main():
         print(f"\nstats for network file '{args.output}':")
         print(f"    start:      {network.start}")
         print(f"    end:        {network.end}")
-        print(f"    stations:   {len(network.stations):>8}")
-        print(f"    stops:      {len(network.stops):>8}")
-        print(f"    trips:      {len(network.trips):>8}")
-        print(f"    paths:      {len(network.paths):>8}")
+        print(f"    stations:   {network.station_count:>8}")
+        print(f"    stops:      {network.stop_count:>8}")
+        print(f"    trips:      {network.trip_count:>8}")
+        print(f"    paths:      {network.path_count:>8}")
 
     network.write(args.output, args.compress)
     if args.verbose:
