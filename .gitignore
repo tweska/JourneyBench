@@ -1,5 +1,6 @@
 # Compiled (shared) objects
 *.o
+*.so
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
