@@ -8,6 +8,7 @@ from core.benchmark import BenchmarkCore
 class Benchmark(BenchmarkCore):
 
     def set_algorithm(self, name: str) -> None:
+        name = name.lower()
         filename = f"../algorithms/{name}/{name}.so"
         status = super().set_algorithm(filename)
         if status != 0:
