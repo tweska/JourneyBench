@@ -4,8 +4,8 @@ from io import TextIOWrapper
 from typing import Any, Dict, List
 from zipfile import ZipFile
 
-from gtfs.model import Service, ServiceChange, Stop, StopTime, Transfer, Trip
-from gtfs.model.common import RecordBase
+from tools.gtfs.model import Service, ServiceChange, Stop, StopTime, Transfer, Trip
+from tools.gtfs.model.common import RecordBase
 
 
 GTFS_DATASET_MAPPINGS: List[Dict[str, Any]] = [

@@ -1,30 +1,20 @@
-import os
-import gzip
-import shutil
-
-from core.benchmark import BenchmarkCore
+from benchmark.journeybench_core import Benchmark as BenchmarkCore
+from benchmark.network import Network
 
 
 class Benchmark(BenchmarkCore):
 
     def set_algorithm(self, name: str) -> None:
         name = name.lower()
-        filename = f"../algorithms/{name}/{name}.so"
+        filename = f"algorithms/{name}/{name}.so"
         status = super().set_algorithm(filename)
         if status != 0:
             raise Exception(f"Could not load algorithm '{name}' from shared object file '{filename}'!")
 
-    def set_network(self, org_filepath: str) -> None:
-        if not org_filepath.endswith('.gz'):
-            filepath = org_filepath
-        else:
-            filepath = f'/tmp/{os.path.splitext(os.path.basename(org_filepath))[0]}'
-            with gzip.open(org_filepath, 'rb') as compressed_file, open(filepath, 'wb') as uncompressed_file:
-                shutil.copyfileobj(compressed_file, uncompressed_file)
-
-        status = super().set_network(filepath)
-        if status != 0:
-            raise Exception(f"Could not load network from network file '{filepath}'!")
+    def set_network(self, filepath: str) -> None:
+        network = Network()
+        network.read(filepath)
+        self.network = network
 
     def run_preprocessing(self):
         if super().run_preprocessing() != 0:

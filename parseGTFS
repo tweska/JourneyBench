@@ -5,16 +5,16 @@ import sys
 from datetime import date, datetime, time, timedelta
 from os.path import getsize
 
-from gtfs import GTFS, read
-from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
+from tools.gtfs import GTFS, read
+from tools.gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
 
-from network import NetworkWriter
+from benchmark.network import Network
 
 
-def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> NetworkWriter:
+def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> Network:
     start_datetime = datetime.combine(start_date, time.min)
     end_datetime = datetime.combine(end_date, time.max)
-    network = NetworkWriter(start_datetime, end_datetime)
+    network = Network(start_datetime, end_datetime)
 
     # Register stops
     for gtfs_stop in gtfs.stops:
@@ -96,15 +96,16 @@ def main():
 
     start = args.date if args.date else find_busiest_date(gtfs)
     end = start + timedelta(days=args.days-1)
-    network: NetworkWriter = gtfs2network(gtfs, start, end)
+    network: Network = gtfs2network(gtfs, start, end)
     if args.verbose:
         print(f"\nstats for network file '{args.output}':")
         print(f"    start:      {network.start}")
         print(f"    end:        {network.end}")
-        print(f"    stations:   {network.station_count:>8}")
-        print(f"    stops:      {network.stop_count:>8}")
-        print(f"    trips:      {network.trip_count:>8}")
-        print(f"    paths:      {network.path_count:>8}")
+        print(f"    stations:   {len(network.stations):>8}")
+        print(f"    stops:      {len(network.stops):>8}")
+        print(f"    trips:      {len(network.trips):>8}")
+        print(f"    conns:      {len(network.conns):>8}")
+        print(f"    paths:      {len(network.paths):>8}")
 
     network.write(args.output, args.compress)
     if args.verbose:

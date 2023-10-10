@@ -1,52 +1,49 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
-#include <cstdint>
+#include <vector>
 
-struct Network;
-struct NetworkStop;
-struct NetworkConn;
-struct NetworkPath;
+#include "types.h"
+
+using namespace std;
+
+struct Stop {
+    u32 stop_id;
+    u32 station_id;
+    f64 latitude;
+    f64 longitude;
+
+    Stop(u32 stop_id, u32 station_id, f64 latitude, f64 longitude)
+        : stop_id(stop_id), station_id(station_id), latitude(latitude), longitude(longitude) {}
+};
+
+struct Conn {
+    u32 trip_id;
+    u32 from_stop_id;
+    u32 to_stop_id;
+    u32 departure_time;
+    u32 arrival_time;
+
+    Conn(u32 trip_id, u32 from_stop_id, u32 to_stop_id, u32 departure_time, u32 arrival_time)
+    : trip_id(trip_id), from_stop_id(from_stop_id), to_stop_id(to_stop_id), departure_time(departure_time), arrival_time(arrival_time) {}
+};
+
+struct Path {
+    u32 from_stop_id;
+    u32 to_stop_id;
+    u32 duration;
+
+    Path(u32 from_stop_id, u32 to_stop_id, u32 duration)
+        : from_stop_id(from_stop_id), to_stop_id(to_stop_id), duration(duration) {}
+};
 
 struct Network {
-    uint32_t stop_count;
-    uint32_t conn_count;
-    uint32_t path_count;
+    vector<Stop> stops;
+    vector<Conn> conns;
+    vector<Path> paths;
 
-    uint32_t station_count;
-    uint32_t trip_count;
-
-    NetworkStop *stops;
-    NetworkConn *conns;
-    NetworkPath *paths;
-
-    NetworkStop **stations;
-    NetworkConn **trips;
-};
-
-struct NetworkStop {
-    uint32_t stop_id;
-    uint32_t station_id;
-    double latitude;
-    double longitude;
-
-    NetworkStop *next_in_station;
-};
-
-struct NetworkConn {
-    uint32_t trip_id;
-    uint32_t from_stop_id;
-    uint32_t to_stop_id;
-    uint32_t departure_time;
-    uint32_t arrival_time;
-
-    NetworkConn *next_in_trip;
-};
-
-struct NetworkPath {
-    uint32_t from_stop_id;
-    uint32_t to_stop_id;
-    uint32_t duration;
+    vector<vector<Stop*>> stations;
+    vector<vector<Conn*>> trips;
 };
 
 #endif

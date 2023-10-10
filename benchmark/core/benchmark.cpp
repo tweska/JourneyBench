@@ -6,13 +6,14 @@
 
 #include "algobase.h"
 #include "network.h"
-#include "networkreader.h"
 
 using namespace std;
 
 
 class Benchmark {
 public:
+    Network *network;
+
     int set_algorithm(char *filepath) {
         /* Load the shared object file corresponding to the algorithm. */
         void *algorithmHandle = dlopen(filepath, RTLD_NOW);
@@ -29,11 +30,6 @@ public:
         algorithm_bic = dynamic_cast<AlgorithmBiC*>(algorithm);
 
         return (algorithm_eat == NULL && algorithm_bic == NULL);
-    }
-
-    int set_network(char *filepath) {
-        network = read_network(filepath);
-        return network == NULL;
     }
 
     int run_preprocessing() {
@@ -55,8 +51,6 @@ private:
     AlgorithmBase *algorithm;
     AlgorithmEAT *algorithm_eat;
     AlgorithmBiC *algorithm_bic;
-
-    Network *network;
 };
 
 
@@ -66,8 +60,8 @@ PYBIND11_MODULE(benchmark, m) {
     py::class_<Benchmark>(m, "BenchmarkCore")
             .def(py::init<>())
             .def("set_algorithm", &Benchmark::set_algorithm)
-            .def("set_network", &Benchmark::set_network)
             .def("run_preprocessing", &Benchmark::run_preprocessing)
             .def("run_query_eat", &Benchmark::run_query_eat)
-            .def("run_query_bic", &Benchmark::run_query_bic);
+            .def("run_query_bic", &Benchmark::run_query_bic)
+            .def_readwrite("network", &Benchmark::network);
 }
