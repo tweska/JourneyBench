@@ -2,10 +2,9 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
+#include "benchmark.h"
 #include "network.h"
 #include "types.h"
-
-#include "benchmark.cpp"
 
 namespace py = pybind11;
 
