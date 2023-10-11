@@ -1,6 +1,9 @@
 #include <iostream>
 
 #include "algobase.h"
+#include "network.h"
+#include "results.h"
+#include "types.h"
 
 using namespace std;
 
@@ -10,19 +13,36 @@ class ExampleAlgorithm : public AlgorithmEAT, public AlgorithmBiC {
         (void) network;
         cerr << "Initializing ExampleAlgorithm!" << endl;
         // TODO: Implement reading input (and preprocessing) here!
-        return -1;
+        return 0;
     }
 
-    int query_eat(uint32_t from_stop_id, uint32_t to_stop_id, uint32_t departure_time) {
+    Journey *query_eat(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
         cerr << "Running EAT query from " << from_stop_id << " to " << to_stop_id << " at time " << departure_time << endl;
         // TODO: Implement EAT query here!
-        return -1;
+
+        Journey *result = new Journey();
+
+        JourneyLeg leg1 = JourneyLeg(LegType::CONN);
+        JourneyLeg leg2 = JourneyLeg(LegType::PATH);
+        JourneyLeg leg3 = JourneyLeg(LegType::CONN);
+
+        leg1.parts.push_back(0);
+        leg1.parts.push_back(1);
+        leg2.parts.push_back(0);
+        leg3.parts.push_back(2);
+        leg3.parts.push_back(3);
+
+        result->legs.push_back(leg1);
+        result->legs.push_back(leg2);
+        result->legs.push_back(leg3);
+
+        return result;
     }
 
-    int query_bic(uint32_t from_stop_id, uint32_t to_stop_id, uint32_t departure_time) {
+    Journey *query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
         cerr << "Running BiC query from " << from_stop_id << " to " << to_stop_id << " at time " << departure_time << endl;
         // TODO: Implement BiC query here!
-        return -1;
+        return nullptr;
     }
 };
 
