@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+
+from benchmark import Benchmark, Network, Queries, Results
+
+
+def main():
+    argparser = argparse.ArgumentParser(
+        prog='runBenchmark',
+        description='Benchmark an algorithm on a network (.network) with a '
+                    'query-set (.queries) and save results (.results).'
+    )
+    argparser.add_argument('network_file')
+    argparser.add_argument('queries_file')
+    argparser.add_argument('results_file')
+    argparser.add_argument('algorithm')
+    argparser.add_argument('-f', '--force', action='store_true')
+    args = argparser.parse_args()
+
+    # Check arguments
+    if not args.force:
+        error = False
+        if not args.network_file.endswith('.network'):
+            error = True
+            print(f"Network file '{args.network_file}' does not end with '.network', "
+                  f"are you sure this is a valid network file?", file=sys.stdout)
+        if not args.queries_file.endswith('.queries'):
+            error = True
+            print(f"Queries file '{args.queries_file}' does not end with '.queries', "
+                  f"are you sure this is a valid queries file?", file=sys.stdout)
+        if not args.results_file.endswith('.results'):
+            error = True
+            print(f"Results file '{args.results_file}' does not end with '.results', "
+                  f"are you sure this is a valid results file?", file=sys.stdout)
+        if error:
+            print(f"Use flag '-f' to ignore warnings.")
+            exit(-1)
+
+    network = Network()
+    network.read(args.network_file)
+    queries = Queries()
+    queries.read(args.queries_file)
+    results = Results()
+
+    benchmark = Benchmark(network, queries, args.algorithm)
+
+    # TODO: Properly loop through .results file instead!
+    query_result = benchmark.run_single_eat_query(0, 5, 0)
+    results.add_query_result(0, query_result)
+
+    results.write(args.results_file)
+
+
+if __name__ == '__main__':
+    main()
