@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "network.h"
+#include "types.h"
 
 class AlgorithmBase {
 public:
@@ -12,12 +13,12 @@ public:
 
 class AlgorithmEAT : public AlgorithmBase {
 public:
-    virtual int query_eat(uint32_t from_stop_id, uint32_t to_stop_id, uint32_t departure_time) = 0;
+    virtual int query_eat(u32 from_stop_id, u32 to_stop_id, u32 departure_time) = 0;
 };
 
 class AlgorithmBiC : public AlgorithmBase {
 public:
-    virtual int query_bic(uint32_t from_stop_id, uint32_t to_stop_id, uint32_t departure_time) = 0;
+    virtual int query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) = 0;
 };
 
 #endif
