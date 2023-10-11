@@ -2,8 +2,8 @@ import datetime
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
-from tools.gtfs import GTFS
-from tools.gtfs.model.calendar_dates import SCExceptionType
+from .gtfs import GTFS
+from .model.calendar_dates import SCExceptionType
 
 
 def find_date_range(gtfs: GTFS) -> Tuple[datetime.date, datetime.date]:

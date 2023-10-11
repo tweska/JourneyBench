@@ -1,5 +1,5 @@
-from benchmark.journeybench_core import Benchmark as BenchmarkCore
-from benchmark.network import Network
+from .benchmark_core import Benchmark as BenchmarkCore
+from .network import Network
 
 
 class Benchmark(BenchmarkCore):

@@ -15,7 +15,7 @@ PYBIND11_MAKE_OPAQUE(std::vector<Path>);
 PYBIND11_MAKE_OPAQUE(std::vector<std::vector<Stop*>>);
 PYBIND11_MAKE_OPAQUE(std::vector<std::vector<Conn*>>);
 
-PYBIND11_MODULE(journeybench_core, m) {
+PYBIND11_MODULE(benchmark_core, m) {
     py::class_<Benchmark>(m, "Benchmark")
             .def(py::init<>())
             .def("set_algorithm", &Benchmark::set_algorithm)

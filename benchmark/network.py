@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from gzip import open as gzip_open
 from typing import Any, Dict, Optional
 
-from benchmark.journeybench_core import Stop, Conn, Path
-from benchmark.journeybench_core import Network as CoreNetwork
+from .benchmark_core import Stop, Conn, Path
+from .benchmark_core import Network as CoreNetwork
 
 from .network_pb2 import PBNetwork, PBNetworkConn, PBNetworkPath, PBNetworkStop
 

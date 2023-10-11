@@ -5,10 +5,10 @@ import sys
 from datetime import date, datetime, time, timedelta
 from os.path import getsize
 
-from tools.gtfs import GTFS, read
-from tools.gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
+from gtfs import GTFS, read
+from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
 
-from benchmark.network import Network
+from benchmark import Network, Stop
 
 
 def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> Network:
