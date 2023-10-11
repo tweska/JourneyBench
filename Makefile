@@ -10,7 +10,7 @@ CPP_FLAGS = -O3 -Wall -Wextra -std=c++11 -fPIC
 
 CORE_OBJECTS = $(patsubst %.cpp,%.o,$(wildcard benchmark/core/*.cpp))
 CORE_MODULE = benchmark/benchmark_core$(PYBIND_EXTENSION)
-PROTOC_GENERATED = benchmark/network_pb2.py
+PROTOC_GENERATED = $(patsubst protobuf/%.proto,benchmark/%_pb2.py,$(wildcard protobuf/*.proto))
 
 
 all: $(CORE_MODULE) $(PROTOC_GENERATED)

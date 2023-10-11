@@ -4,6 +4,7 @@
 
 #include "benchmark.h"
 #include "network.h"
+#include "queries.h"
 #include "types.h"
 
 namespace py = pybind11;
@@ -13,6 +14,8 @@ PYBIND11_MAKE_OPAQUE(std::vector<Conn>);
 PYBIND11_MAKE_OPAQUE(std::vector<Path>);
 PYBIND11_MAKE_OPAQUE(std::vector<std::vector<Stop*>>);
 PYBIND11_MAKE_OPAQUE(std::vector<std::vector<Conn*>>);
+
+PYBIND11_MAKE_OPAQUE(std::vector<Query>);
 
 PYBIND11_MODULE(benchmark_core, m) {
     py::class_<Benchmark>(m, "Benchmark")
@@ -45,18 +48,28 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def_readonly("duration", &Path::duration);
 
     py::class_<Network>(m, "Network")
-    .def(py::init<>())
-    .def_readwrite("stops", &Network::stops)
-    .def_readwrite("conns", &Network::conns)
-    .def_readwrite("paths", &Network::paths)
-    .def_readwrite("stations", &Network::stations)
-    .def_readwrite("trips", &Network::trips);
+            .def(py::init<>())
+            .def_readwrite("stops", &Network::stops)
+            .def_readwrite("conns", &Network::conns)
+            .def_readwrite("paths", &Network::paths)
+            .def_readwrite("stations", &Network::stations)
+            .def_readwrite("trips", &Network::trips);
+
+    py::class_<Query>(m, "Query")
+            .def(py::init<u32, u32, u32>())
+            .def_readonly("from_stop_id", &Query::from_stop_id)
+            .def_readonly("to_stop_id", &Query::to_stop_id)
+            .def_readonly("departure_time", &Query::departure_time);
+
+    py::class_<Queries>(m, "Queries")
+            .def(py::init<>())
+            .def_readwrite("queries", &Queries::queries);
 
     py::bind_vector<std::vector<Stop>>(m, "VectorStop");
     py::bind_vector<std::vector<Conn>>(m, "VectorConn");
     py::bind_vector<std::vector<Path>>(m, "VectorPath");
     py::bind_vector<std::vector<std::vector<Stop*>>>(m, "VectorStation");
     py::bind_vector<std::vector<std::vector<Conn*>>>(m, "VectorTrip");
+
+    py::bind_vector<std::vector<Query>>(m, "VectorQuery");
 }
-
-
