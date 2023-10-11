@@ -5,6 +5,7 @@
 #include "benchmark.h"
 #include "network.h"
 #include "queries.h"
+#include "results.h"
 #include "types.h"
 
 namespace py = pybind11;
@@ -17,13 +18,18 @@ PYBIND11_MAKE_OPAQUE(std::vector<std::vector<Conn*>>);
 
 PYBIND11_MAKE_OPAQUE(std::vector<Query>);
 
+PYBIND11_MAKE_OPAQUE(std::vector<QueryResult>);
+PYBIND11_MAKE_OPAQUE(std::vector<Journey>);
+PYBIND11_MAKE_OPAQUE(std::vector<JourneyLeg>);
+PYBIND11_MAKE_OPAQUE(std::vector<u32>);
+
 PYBIND11_MODULE(benchmark_core, m) {
     py::class_<Benchmark>(m, "Benchmark")
             .def(py::init<>())
             .def("set_algorithm", &Benchmark::set_algorithm)
             .def("run_preprocessing", &Benchmark::run_preprocessing)
-            .def("run_query_eat", &Benchmark::run_query_eat)
-            .def("run_query_bic", &Benchmark::run_query_bic)
+            .def("run_single_eat_query", &Benchmark::run_single_eat_query)
+//            .def("run_single_bic_query", &Benchmark::run_single_bic_query)
             .def_readwrite("network", &Benchmark::network);
 
     py::class_<Stop>(m, "Stop")
@@ -65,6 +71,25 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def(py::init<>())
             .def_readwrite("queries", &Queries::queries);
 
+    py::enum_<LegType>(m, "LegType")
+            .value("CONN", LegType::CONN)
+            .value("PATH", LegType::PATH)
+            .export_values();
+
+    py::class_<JourneyLeg>(m, "JourneyLeg")
+            .def(py::init<LegType>())
+            .def_readonly("type", &JourneyLeg::type)
+            .def_readwrite("parts", &JourneyLeg::parts);
+
+    py::class_<Journey>(m, "Journey")
+            .def(py::init<>())
+            .def_readwrite("legs", &Journey::legs);
+
+    py::class_<QueryResult>(m, "QueryResult")
+            .def(py::init<f64>())
+            .def_readonly("execution_time_ms", &QueryResult::execution_time_ms)
+            .def_readwrite("journeys", &QueryResult::journeys);
+
     py::bind_vector<std::vector<Stop>>(m, "VectorStop");
     py::bind_vector<std::vector<Conn>>(m, "VectorConn");
     py::bind_vector<std::vector<Path>>(m, "VectorPath");
@@ -72,4 +97,9 @@ PYBIND11_MODULE(benchmark_core, m) {
     py::bind_vector<std::vector<std::vector<Conn*>>>(m, "VectorTrip");
 
     py::bind_vector<std::vector<Query>>(m, "VectorQuery");
+
+    py::bind_vector<std::vector<QueryResult>>(m, "VectorQueryResult");
+    py::bind_vector<std::vector<Journey>>(m, "VectorJourney");
+    py::bind_vector<std::vector<JourneyLeg>>(m, "VectorJourneyLeg");
+    py::bind_vector<std::vector<u32>>(m, "Vector_u32");
 }

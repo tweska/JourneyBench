@@ -3,11 +3,11 @@ from gzip import open
 from .benchmark_core import Queries as CoreQueries
 from .benchmark_core import Query
 
-from.queries_pb2 import PBQueries, PBQuery
+from .queries_pb2 import PBQueries, PBQuery
 
 
 class Queries(CoreQueries):
-    def read(self, filepath: str):
+    def read(self, filepath: str) -> None:
         pb_queries: PBQueries = PBQueries()
         with open(filepath, 'rb') as file:
             pb_queries.ParseFromString(file.read())
@@ -19,7 +19,7 @@ class Queries(CoreQueries):
                 pb_query.departure_time,
             ))
 
-    def write(self, filepath: str):
+    def write(self, filepath: str) -> None:
         pb_queries: PBQueries = PBQueries()
 
         for query in self.queries:
@@ -30,3 +30,6 @@ class Queries(CoreQueries):
 
         with open(filepath, 'wb') as file:
             file.write(pb_queries.SerializeToString())
+
+    def add_query(self, from_stop_id: int, to_stop_id: int, departure_time: int) -> None:
+        self.queries.append(Query(from_stop_id, to_stop_id, departure_time))

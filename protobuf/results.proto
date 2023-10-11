@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package results;
+
+enum PBLegType {
+  CONN = 0;
+  PATH = 1;
+}
+
+message PBJourneyLeg {
+  PBLegType type = 1;
+  repeated uint32 parts = 2;
+}
+
+message PBJourney {
+  repeated PBJourneyLeg legs = 1;
+}
+
+message PBQueryResult {
+  uint32 query_id = 1;
+  double execution_time_ms = 2;
+  repeated PBJourney journeys = 3;
+}
+
+message PBPreprocessingResult {
+  double execution_time_ms = 1;
+}
+
+message PBResults {
+  repeated PBPreprocessingResult preprocessing = 1;
+  repeated PBQueryResult queries = 2;
+}

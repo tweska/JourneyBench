@@ -3,6 +3,8 @@
 
 #include "algobase.h"
 #include "network.h"
+#include "queries.h"
+#include "results.h"
 #include "types.h"
 
 class Benchmark {
@@ -11,8 +13,8 @@ public:
 
     int set_algorithm(char *filepath);
     int run_preprocessing();
-    int run_query_eat(u32 from_stop_id, u32 to_stop_id, u32 departure_time);
-    int run_query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time);
+    QueryResult *run_single_eat_query(u32 from_stop_id, u32 to_stop_id, u32 departure_time);
+    QueryResult *run_single_bic_query(u32 from_stop_id, u32 to_stop_id, u32 departure_time);
 
 private:
     AlgorithmBase *algorithm;

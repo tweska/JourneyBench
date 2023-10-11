@@ -30,15 +30,21 @@ int Benchmark::set_algorithm(char *filepath) {
 
 int Benchmark::run_preprocessing() {
     if (network == nullptr || algorithm == nullptr || (algorithm_eat == nullptr && algorithm_bic == nullptr)) { return -1; }
+    /* TODO: Add timing code! */
     return algorithm->init(network);
 }
 
-int Benchmark::run_query_eat(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-    if (algorithm_eat == nullptr) { return -1; }
-    return algorithm_eat->query_eat(from_stop_id, to_stop_id, departure_time);
+QueryResult *Benchmark::run_single_eat_query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
+    if (network == nullptr || algorithm_eat == nullptr) { return NULL; }
+    /* TODO: Add timing code! */
+    Journey *journey = algorithm_eat->query_eat(from_stop_id, to_stop_id, departure_time);
+    QueryResult *result = new QueryResult(0.0);
+    result->journeys.push_back(*journey);
+    delete journey;
+    return result;
 }
 
-int Benchmark::run_query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-    if (algorithm_bic == nullptr) { return -1; }
-    return algorithm_bic->query_bic(from_stop_id, to_stop_id, departure_time);
-}
+//int Benchmark::run_query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time, Journey *result) {
+//    if (algorithm_bic == nullptr || result == nullptr) { return -1; }
+//    return algorithm_bic->query_bic(from_stop_id, to_stop_id, departure_time, result);
+//}
