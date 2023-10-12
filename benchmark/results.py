@@ -1,6 +1,6 @@
 from gzip import open
 
-from .benchmark_core import LegType, JourneyLeg, Journey, QueryResult, QueryType
+from .benchmark_core import LegType, JourneyLeg, Journey, QueryResult, QueryType, PreprocessingResult
 
 from .results_pb2 import PBResults, PBLegType, PBQueryType
 
@@ -68,8 +68,8 @@ class Results:
         with open(filepath, 'wb') as file:
             file.write(pb_results.SerializeToString())
 
-    def add_preprocessing_result(self, runtime_ns: int):
-        self.preprocessing_results.append(runtime_ns)
+    def add_preprocessing_result(self, preprocessing_result: PreprocessingResult):
+        self.preprocessing_results.append(preprocessing_result)
 
     def add_query_result(self, query_id: int, query_result: QueryResult):
         self.query_results.append((query_id, query_result))

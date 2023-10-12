@@ -30,6 +30,8 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def("run_preprocessing", &Benchmark::run_preprocessing)
             .def("run_single_eat_query", &Benchmark::run_single_eat_query)
             .def("run_single_bic_query", &Benchmark::run_single_bic_query)
+            .def("supports_eat_query", &Benchmark::supports_eat_query)
+            .def("supports_bic_query", &Benchmark::supports_bic_query)
             .def_readwrite("network", &Benchmark::network);
 
     py::class_<Stop>(m, "Stop")
