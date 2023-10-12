@@ -50,7 +50,7 @@ QueryResult *Benchmark::run_single_eat_query(u32 from_stop_id, u32 to_stop_id, u
     auto end = chrono::steady_clock::now();
     auto runtime_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
 
-    auto result = new QueryResult(runtime_ns);
+    auto result = new QueryResult(runtime_ns, QueryType::EAT);
     result->journeys.push_back(*journey);
     delete journey;
     return result;
@@ -65,7 +65,7 @@ QueryResult *Benchmark::run_single_bic_query(u32 from_stop_id, u32 to_stop_id, u
     auto end = chrono::steady_clock::now();
     auto runtime_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
 
-    auto result = new QueryResult(runtime_ns);
+    auto result = new QueryResult(runtime_ns, QueryType::BIC);
     for (const Journey& journey : *journeys) {
         result->journeys.push_back(journey);
     }

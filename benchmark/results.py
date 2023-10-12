@@ -1,8 +1,8 @@
 from gzip import open
 
-from .benchmark_core import LegType, JourneyLeg, Journey, QueryResult
+from .benchmark_core import LegType, JourneyLeg, Journey, QueryResult, QueryType
 
-from .results_pb2 import PBResults, PBLegType
+from .results_pb2 import PBResults, PBLegType, PBQueryType
 
 
 class Results:
@@ -18,7 +18,12 @@ class Results:
             self.preprocessing_results.append(pb_preprocessing_result.runtime_ns)
 
         for pb_query_result in pb_results.queries:
-            self.query_results.append((pb_query_result.query_id, QueryResult(pb_query_result.runtime_ns)))
+            if pb_query_result.type == PBQueryType.EAT:
+                type = QueryType.EAT
+            else:
+                assert(pb_query_result.type == PBQueryType.BIC)
+                type = QueryType.BIC
+            self.query_results.append((pb_query_result.query_id, QueryResult(pb_query_result.runtime_ns, type)))
             for pb_journey in pb_query_result.journeys:
                 self.query_results[-1][1].journeys.append(Journey())
                 for pb_leg in pb_journey.legs:
@@ -42,6 +47,12 @@ class Results:
             pb_query_result = pb_results.queries.add()
             pb_query_result.query_id = query_result[0]
             pb_query_result.runtime_ns = query_result[1].runtime_ns
+            if query_result[1].type == QueryType.EAT:
+                pb_query_result.type = PBQueryType.EAT
+            else:
+                assert(query_result[1].type == QueryType.BIC)
+                pb_query_result.type = PBQueryType.BIC
+
             for journey in query_result[1].journeys:
                 pb_journey = pb_query_result.journeys.add()
                 for leg in journey.legs:

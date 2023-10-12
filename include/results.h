@@ -21,12 +21,15 @@ struct Journey {
     vector<JourneyLeg> legs;
 };
 
+enum QueryType { EAT, BIC };
+
 struct QueryResult {
     u64 runtime_ns;
+    QueryType type;
     vector<Journey> journeys;
 
-    QueryResult(u64 runtime_ns)
-        : runtime_ns(runtime_ns) {}
+    QueryResult(u64 runtime_ns, QueryType type)
+        : runtime_ns(runtime_ns), type(type) {}
 };
 
 struct PreprocessingResult {

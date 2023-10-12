@@ -85,9 +85,15 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def(py::init<>())
             .def_readwrite("legs", &Journey::legs);
 
+    py::enum_<QueryType>(m, "QueryType")
+            .value("EAT", QueryType::EAT)
+            .value("BIC", QueryType::BIC)
+            .export_values();
+
     py::class_<QueryResult>(m, "QueryResult")
-            .def(py::init<u64>())
+            .def(py::init<u64, QueryType>())
             .def_readonly("runtime_ns", &QueryResult::runtime_ns)
+            .def_readonly("type", &QueryResult::type)
             .def_readwrite("journeys", &QueryResult::journeys);
 
     py::class_<PreprocessingResult>(m, "PreprocessingResult")
