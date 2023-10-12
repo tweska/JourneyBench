@@ -12,7 +12,7 @@ public:
     Network *network;
 
     int set_algorithm(char *filepath);
-    int run_preprocessing();
+    PreprocessingResult *run_preprocessing();
     QueryResult *run_single_eat_query(u32 from_stop_id, u32 to_stop_id, u32 departure_time);
     QueryResult *run_single_bic_query(u32 from_stop_id, u32 to_stop_id, u32 departure_time);
 

@@ -15,10 +15,10 @@ class Results:
             pb_results.ParseFromString(file.read())
 
         for pb_preprocessing_result in pb_results.preprocessing:
-            self.preprocessing_results.append(pb_preprocessing_result.execution_time_ms)
+            self.preprocessing_results.append(pb_preprocessing_result.runtime_ns)
 
         for pb_query_result in pb_results.queries:
-            self.query_results.append((pb_query_result.query_id, QueryResult(pb_query_result.execution_time_ms)))
+            self.query_results.append((pb_query_result.query_id, QueryResult(pb_query_result.runtime_ns)))
             for pb_journey in pb_query_result.journeys:
                 self.query_results[-1][1].journeys.append(Journey())
                 for pb_leg in pb_journey.legs:
@@ -36,12 +36,12 @@ class Results:
 
         for preprocessing_result in self.preprocessing_results:
             pb_preprocessing_result = pb_results.preprocessing.add()
-            pb_preprocessing_result.execution_time_ms = preprocessing_result.execution_time_ms
+            pb_preprocessing_result.runtime_ns = preprocessing_result.runtime_ns
 
         for query_result in self.query_results:
             pb_query_result = pb_results.queries.add()
             pb_query_result.query_id = query_result[0]
-            pb_query_result.execution_time_ms = query_result[1].execution_time_ms
+            pb_query_result.runtime_ns = query_result[1].runtime_ns
             for journey in query_result[1].journeys:
                 pb_journey = pb_query_result.journeys.add()
                 for leg in journey.legs:
@@ -57,8 +57,8 @@ class Results:
         with open(filepath, 'wb') as file:
             file.write(pb_results.SerializeToString())
 
-    def add_preprocessing_result(self, execution_time_ms: float):
-        self.preprocessing_results.append(execution_time_ms)
+    def add_preprocessing_result(self, runtime_ns: int):
+        self.preprocessing_results.append(runtime_ns)
 
     def add_query_result(self, query_id: int, query_result: QueryResult):
         self.query_results.append((query_id, query_result))

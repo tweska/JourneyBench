@@ -18,12 +18,12 @@ message PBJourney {
 
 message PBQueryResult {
   uint32 query_id = 1;
-  double execution_time_ms = 2;
+  uint64 runtime_ns = 2;
   repeated PBJourney journeys = 3;
 }
 
 message PBPreprocessingResult {
-  double execution_time_ms = 1;
+  uint64 runtime_ns = 1;
 }
 
 message PBResults {

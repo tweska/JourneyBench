@@ -22,11 +22,18 @@ struct Journey {
 };
 
 struct QueryResult {
-    f64 execution_time_ms;
+    u64 runtime_ns;
     vector<Journey> journeys;
 
-    QueryResult(f64 execution_time_ms)
-        : execution_time_ms(execution_time_ms) {}
+    QueryResult(u64 runtime_ns)
+        : runtime_ns(runtime_ns) {}
+};
+
+struct PreprocessingResult {
+    u64 runtime_ns;
+
+    PreprocessingResult(u64 runtime_ns)
+        : runtime_ns(runtime_ns) {}
 };
 
 #endif

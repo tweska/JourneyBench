@@ -39,10 +39,20 @@ class ExampleAlgorithm : public AlgorithmEAT, public AlgorithmBiC {
         return result;
     }
 
-    Journey *query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
+    vector<Journey> *query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
         cerr << "Running BiC query from " << from_stop_id << " to " << to_stop_id << " at time " << departure_time << endl;
         // TODO: Implement BiC query here!
-        return nullptr;
+
+        vector<Journey> *result = new vector<Journey>();
+
+        Journey journey1 = Journey();
+        JourneyLeg leg1 = JourneyLeg(LegType::CONN);
+        leg1.parts.push_back(4);
+        journey1.legs.push_back(leg1);
+        result->push_back(journey1);
+        result->push_back(*query_eat(from_stop_id, to_stop_id, departure_time));
+
+        return result;
     }
 };
 

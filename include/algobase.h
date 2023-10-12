@@ -19,7 +19,7 @@ public:
 
 class AlgorithmBiC : public AlgorithmBase {
 public:
-    virtual Journey *query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) = 0;
+    virtual vector<Journey> *query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) = 0;
 };
 
 #endif

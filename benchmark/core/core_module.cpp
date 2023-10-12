@@ -29,7 +29,7 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def("set_algorithm", &Benchmark::set_algorithm)
             .def("run_preprocessing", &Benchmark::run_preprocessing)
             .def("run_single_eat_query", &Benchmark::run_single_eat_query)
-//            .def("run_single_bic_query", &Benchmark::run_single_bic_query)
+            .def("run_single_bic_query", &Benchmark::run_single_bic_query)
             .def_readwrite("network", &Benchmark::network);
 
     py::class_<Stop>(m, "Stop")
@@ -86,9 +86,13 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def_readwrite("legs", &Journey::legs);
 
     py::class_<QueryResult>(m, "QueryResult")
-            .def(py::init<f64>())
-            .def_readonly("execution_time_ms", &QueryResult::execution_time_ms)
+            .def(py::init<u64>())
+            .def_readonly("runtime_ns", &QueryResult::runtime_ns)
             .def_readwrite("journeys", &QueryResult::journeys);
+
+    py::class_<PreprocessingResult>(m, "PreprocessingResult")
+            .def(py::init<u64>())
+            .def_readonly("runtime_ns", &PreprocessingResult::runtime_ns);
 
     py::bind_vector<std::vector<Stop>>(m, "VectorStop");
     py::bind_vector<std::vector<Conn>>(m, "VectorConn");
