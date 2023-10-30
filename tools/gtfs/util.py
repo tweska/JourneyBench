@@ -43,8 +43,12 @@ def generate_date_service_dict(gtfs: GTFS) -> Dict[datetime.date, List[int]]:
     # add or remove special service days
     for gtfs_service_change in gtfs.service_changes:
         if gtfs_service_change.exception_type == SCExceptionType.ADDED:
+            if gtfs_service_change.service_id in date_service_dict[gtfs_service_change.date]:
+                continue
             date_service_dict[gtfs_service_change.date].append(gtfs_service_change.service_id)
         elif gtfs_service_change.exception_type == SCExceptionType.REMOVED:
+            if gtfs_service_change.service_id not in date_service_dict[gtfs_service_change.date]:
+                continue
             date_service_dict[gtfs_service_change.date].remove(gtfs_service_change.service_id)
 
     return date_service_dict
