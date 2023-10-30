@@ -9,6 +9,10 @@ from gtfs import GTFS, read
 from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
 
 from benchmark import Network, Stop
+from util import haversine_distance
+
+
+WALKING_SPEED = 1.33  # In meters per second
 
 
 def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> Network:
@@ -45,6 +49,11 @@ def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> Network:
 
     # Register transfers as paths
     for gtfs_transfer in gtfs.transfers:
+        if gtfs_transfer.min_transfer_time <= 0:
+            gtfs_transfer.min_transfer_time = int(haversine_distance(
+                (gtfs.stops[gtfs_transfer.from_stop_id].stop_lat, gtfs.stops[gtfs_transfer.from_stop_id].stop_lon),
+                (gtfs.stops[gtfs_transfer.to_stop_id].stop_lat, gtfs.stops[gtfs_transfer.to_stop_id].stop_lon)
+            ) / WALKING_SPEED)
         network.add_path(gtfs_transfer.from_stop_id, gtfs_transfer.to_stop_id,
                          timedelta(seconds=gtfs_transfer.min_transfer_time))
 

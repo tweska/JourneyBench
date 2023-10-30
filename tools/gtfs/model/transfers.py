@@ -14,7 +14,10 @@ class Transfer(RecordBase):
         stop_id_map = context['stop_id_map']
         self.from_stop_id = stop_id_map[values['from_stop_id']]
         self.to_stop_id = stop_id_map[values['to_stop_id']]
-        self.min_transfer_time = int(values['min_transfer_time'])
+        try:
+            self.min_transfer_time = int(values['min_transfer_time'])
+        except ValueError:
+            self.min_transfer_time = 0
 
     def primary(self) -> Tuple[int, int]:
         return self.from_stop_id, self.to_stop_id
