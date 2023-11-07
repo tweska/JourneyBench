@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 
 import argparse
-import sys
 from datetime import date, datetime, time, timedelta
 from os.path import getsize
+from typing import Optional
 
+from benchmark import Network
 from gtfs import GTFS, read
 from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
 
-from benchmark import Network, Stop
-from util import haversine_distance
 
+def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
+    start_date = start_date if start_date else find_busiest_date(gtfs)
+    end_date = start_date + timedelta(days=days-1)
 
-WALKING_SPEED = 1.33  # In meters per second
-
-
-def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> Network:
     start_datetime = datetime.combine(start_date, time.min)
     end_datetime = datetime.combine(end_date, time.max)
-    network = Network(start_datetime, end_datetime)
+    network = Network(int((end_datetime - start_datetime).total_seconds()))
 
     # Register stops
     for gtfs_stop in gtfs.stops:
-        network.add_stop(gtfs_stop.stop_id, gtfs_stop.stop_lat, gtfs_stop.stop_lon, gtfs_stop.parent_station)
+        network.add_node(gtfs_stop.stop_id, gtfs_stop.stop_lat, gtfs_stop.stop_lon)
 
     # Register trips
     date_trip_dict = generate_date_trip_dict(gtfs)
@@ -34,8 +32,8 @@ def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> Network:
         for trip in date_trip_dict[cur_date]:
             stop_times = [gtfs.stop_times[index] for index in trip_stop_time_dict[trip]]
             stops = [st.stop_id for st in stop_times]
-            arrivals = [datetime.combine(cur_date, time.min) + st.arrival_time for st in stop_times]
-            departures = [datetime.combine(cur_date, time.min) + st.departure_time for st in stop_times]
+            arrivals = [int(((datetime.combine(cur_date, time.min) + st.arrival_time) - start_datetime).total_seconds()) for st in stop_times]
+            departures = [int(((datetime.combine(cur_date, time.min) + st.departure_time) - start_datetime).total_seconds()) for st in stop_times]
             for i in range(len(stops)-1):
                 network.add_conn(
                     trip_id,
@@ -47,51 +45,26 @@ def gtfs2network(gtfs: GTFS, start_date: date, end_date: date) -> Network:
             trip_id += 1
         cur_date += timedelta(days=1)
 
-    # Register transfers as paths
-    for gtfs_transfer in gtfs.transfers:
-        if gtfs_transfer.min_transfer_time <= 0:
-            gtfs_transfer.min_transfer_time = int(haversine_distance(
-                (gtfs.stops[gtfs_transfer.from_stop_id].stop_lat, gtfs.stops[gtfs_transfer.from_stop_id].stop_lon),
-                (gtfs.stops[gtfs_transfer.to_stop_id].stop_lat, gtfs.stops[gtfs_transfer.to_stop_id].stop_lon)
-            ) / WALKING_SPEED)
-        network.add_path(gtfs_transfer.from_stop_id, gtfs_transfer.to_stop_id,
-                         timedelta(seconds=gtfs_transfer.min_transfer_time))
-
     return network
 
 
 def main():
     argparser = argparse.ArgumentParser(
         prog='parseGTFS',
-        description='Parse a GTFS file and write to network (.network) file.',
+        description='Parse a network from a timetable source.',
     )
-    argparser.add_argument('input')
-    argparser.add_argument('output')
-    argparser.add_argument('-d', '--date',
+    argparser.add_argument('-o', '--output', required=True,
+                           help='output network (.network) file')
+    argparser.add_argument('-i', '--input', required=True,
+                           help='input GTFS (.zip) file')
+    argparser.add_argument('-d', '--date', required=False,
                            type=lambda s: datetime.strptime(s, '%Y-%m-%d').date(),
-                           required=False)
-    argparser.add_argument('-n', '--days', type=int, default=1, required=False)
-    argparser.add_argument('-c', '--compress', action='store_true')
-    argparser.add_argument('-f', '--force', action='store_true')
-    argparser.add_argument('-v', '--verbose', action='store_true')
+                           help='first date of the transit timetable')
+    argparser.add_argument('-c', '--count', type=int, default=1,
+                           help='number of days in the transit timetable')
+    argparser.add_argument('-v', '--verbose', action='store_true',
+                           help='print helpful messages')
     args = argparser.parse_args()
-
-    # Check arguments
-    if not args.force:
-        if not args.input.endswith('.zip'):
-            print(
-                f"Input file '{args.input}' does not end with '.zip', are you sure this is a GTFS file? "
-                f"Use flag '-f' to ignore.",
-                file=sys.stdout
-            )
-            exit(-1)
-        if not args.output.endswith('.network'):
-            print(
-                f"Output file '{args.output}' does not end with '.network', are you sure you want to save the "
-                f"intermediate network file with this name? Use flag '-f' to ignore.",
-                file=sys.stdout
-            )
-            exit(-1)
 
     gtfs: GTFS = read(args.input)
     if args.verbose:
@@ -101,27 +74,19 @@ def main():
         print(f"      changes:   {len(gtfs.service_changes):>8}")
         print(f"    trips:       {len(gtfs.trips):>8}")
         print(f"    stop times:  {len(gtfs.stop_times):>8}")
-        print(f"    transfers:   {len(gtfs.transfers):>8}")
 
-    start = args.date if args.date else find_busiest_date(gtfs)
-    end = start + timedelta(days=args.days-1)
-    network: Network = gtfs2network(gtfs, start, end)
+    network: Network = gtfs2network(gtfs, args.date, args.count)
     if args.verbose:
         print(f"\nstats for network file '{args.output}':")
-        print(f"    start:      {network.start}")
-        print(f"    end:        {network.end}")
-        print(f"    stations:   {len(network.stations):>8}")
-        print(f"    stops:      {len(network.stops):>8}")
+        print(f"    end:        {network.end:>8}")
+        print(f"    nodes:      {len(network.nodes):>8}")
         print(f"    trips:      {len(network.trips):>8}")
         print(f"    conns:      {len(network.conns):>8}")
         print(f"    paths:      {len(network.paths):>8}")
 
-    network.write(args.output, args.compress)
+    network.write(args.output)
     if args.verbose:
         print(f"    size:       {getsize(args.output)/1024:>10.1f} KiB")
-        if args.compress:
-            print(f"    compressed: {getsize(f'{args.output}.gz') / 1024:>10.1f} KiB")
-            print(f"    ratio:      {getsize(args.output) / getsize(f'{args.output}.gz'):>10.1f}")
 
 
 if __name__ == '__main__':

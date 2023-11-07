@@ -4,7 +4,7 @@ from io import TextIOWrapper
 from typing import Any, Dict, List
 from zipfile import ZipFile
 
-from .model import Service, ServiceChange, Stop, StopTime, Transfer, Trip
+from .model import Service, ServiceChange, Stop, StopTime, Trip
 from .model.common import RecordBase
 
 
@@ -34,11 +34,6 @@ GTFS_DATASET_MAPPINGS: List[Dict[str, Any]] = [
         'fieldname': 'stop_times',
         'class': StopTime
     },
-    {
-        'filename': 'transfers.txt',
-        'fieldname': 'transfers',
-        'class': Transfer
-    }
 ]
 
 
@@ -50,7 +45,6 @@ class GTFS:
 
     services: List[Service] = field(default_factory=list)
     service_changes: List[ServiceChange] = field(default_factory=list)
-    transfers: List[Transfer] = field(default_factory=list)
 
 
 def read(path: str) -> GTFS:

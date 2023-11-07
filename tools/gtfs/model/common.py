@@ -35,10 +35,6 @@ def get_id(id_map: Dict[str, int], original: str) -> int:
     return id_map.setdefault(original, len(id_map))
 
 
-def get_opt_id(id_map: Dict[str, int], original: str) -> Optional[int]:
-    return None if original == '' else get_id(id_map, original)
-
-
 def str2timedelta(delta: str) -> Optional[timedelta]:
     digits = [int(x) for x in delta.split(':')]
     if len(digits) != 3:
