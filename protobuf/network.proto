@@ -2,31 +2,29 @@ syntax = "proto3";
 
 package network;
 
-message PBNetworkStop {
-  uint32 station_id = 1;
-  double latitude = 2;
-  double longitude = 3;
+message PBNetworkNode {
+  double latitude = 1;
+  double longitude = 2;
 }
 
 message PBNetworkConn {
   uint32 trip_id = 1;
-  uint32 from_stop_id = 2;
-  uint32 to_stop_id = 3;
+  uint32 from_node_id = 2;
+  uint32 to_node_id = 3;
   uint32 departure_time = 4;
   uint32 arrival_time = 5;
 }
 
 message PBNetworkPath {
-  uint32 from_stop_id = 1;
-  uint32 to_stop_id = 2;
+  uint32 from_node_id = 1;
+  uint32 to_node_id = 2;
   uint32 duration = 3;
 }
 
 message PBNetwork {
-  repeated PBNetworkStop stops = 1;
+  repeated PBNetworkNode nodes = 1;
   repeated PBNetworkConn conns = 2;
   repeated PBNetworkPath paths = 3;
 
-  uint32 station_count = 4;
-  uint32 trip_count = 5;
+  uint32 trip_count = 4;
 }

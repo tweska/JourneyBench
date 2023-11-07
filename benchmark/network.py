@@ -1,54 +1,40 @@
-from datetime import datetime, timedelta
-from gzip import open as gzip_open
+from gzip import open
 from typing import Any, Dict, Optional
 
-from .benchmark_core import Stop, Conn, Path
+from .benchmark_core import Node, Conn, Path
 from .benchmark_core import Network as CoreNetwork
 
-from .network_pb2 import PBNetwork, PBNetworkConn, PBNetworkPath, PBNetworkStop
+from .network_pb2 import PBNetwork, PBNetworkNode, PBNetworkConn, PBNetworkPath
 
 
 class Network(CoreNetwork):
-    start: Optional[datetime]
-    end: Optional[datetime]
+    end: Optional[int]
 
-    __stop_id_map: Dict[Any, int] = {}
+    __node_id_map: Dict[Any, int] = {}
     __trip_id_map: Dict[Any, int] = {}
-    __station_id_map: Dict[Any, int] = {}
 
-    def __init__(self, start: Optional[datetime] = None, end: Optional[datetime] = None):
+    def __init__(self, end: Optional[int] = None):
         super().__init__()
-        self.start, self.end = start, end
+        self.end = end
 
-    def read(
-            self,
-            filepath: str,
-    ) -> None:
+    def read(self, filepath: str) -> None:
         pb_network: PBNetwork = PBNetwork()
-        if filepath.endswith('.gz'):
-            with gzip_open(filepath, 'rb') as file:
-                pb_network.ParseFromString(file.read())
-        else:
-            with open(filepath, 'rb') as file:
-                pb_network.ParseFromString(file.read())
+        with open(filepath, 'rb') as file:
+            pb_network.ParseFromString(file.read())
 
-        [self.stations.append([]) for _ in range(pb_network.station_count)]
         [self.trips.append([]) for _ in range(pb_network.trip_count)]
 
-        for stop_id, pb_stop in enumerate(pb_network.stops):
-            self.stops.append(Stop(
-                stop_id,
-                pb_stop.station_id,
-                pb_stop.latitude,
-                pb_stop.longitude,
+        for pb_node in pb_network.nodes:
+            self.nodes.append(Node(
+                pb_node.latitude,
+                pb_node.longitude,
             ))
-            self.stations[pb_stop.station_id].append(self.stops[-1])
 
         for pb_conn in pb_network.conns:
             self.conns.append(Conn(
                 pb_conn.trip_id,
-                pb_conn.from_stop_id,
-                pb_conn.to_stop_id,
+                pb_conn.from_node_id,
+                pb_conn.to_node_id,
                 pb_conn.departure_time,
                 pb_conn.arrival_time,
             ))
@@ -56,124 +42,101 @@ class Network(CoreNetwork):
 
         for pb_path in pb_network.paths:
             self.paths.append(Path(
-                pb_path.from_stop_id,
-                pb_path.to_stop_id,
+                pb_path.from_node_id,
+                pb_path.to_node_id,
                 pb_path.duration,
             ))
 
-    def write(
-            self,
-            filepath: str,
-            compress_copy: bool = False,
-    ) -> None:
+    def write(self, filepath: str) -> None:
         pb_network: PBNetwork = PBNetwork()
-        pb_network.station_count = len(self.stations)
         pb_network.trip_count = len(self.trips)
 
-        for stop_id, stop in enumerate(self.stops):
-            assert(stop.stop_id == stop_id)
-            pb_stop: PBNetworkStop = pb_network.stops.add()
-            pb_stop.station_id = stop.station_id
-            pb_stop.latitude = stop.latitude
-            pb_stop.longitude = stop.longitude
+        for node_id, node in enumerate(self.nodes):
+            pb_node: PBNetworkNode = pb_network.nodes.add()
+            pb_node.latitude = node.latitude
+            pb_node.longitude = node.longitude
 
         for conn in sorted(self.conns, key=lambda c: c.departure_time):
             pb_conn: PBNetworkConn = pb_network.conns.add()
             pb_conn.trip_id = conn.trip_id
-            pb_conn.from_stop_id = conn.from_stop_id
-            pb_conn.to_stop_id = conn.to_stop_id
+            pb_conn.from_node_id = conn.from_node_id
+            pb_conn.to_node_id = conn.to_node_id
             pb_conn.departure_time = conn.departure_time
             pb_conn.arrival_time = conn.arrival_time
 
-        for path in sorted(self.paths, key=lambda p: p.from_stop_id):
+        for path in sorted(self.paths, key=lambda p: p.from_node_id):
             pb_path: PBNetworkPath = pb_network.paths.add()
-            pb_path.from_stop_id = path.from_stop_id
-            pb_path.to_stop_id = path.to_stop_id
+            pb_path.from_node_id = path.from_node_id
+            pb_path.to_node_id = path.to_node_id
             pb_path.duration = path.duration
 
         serialized_data = pb_network.SerializeToString()
         with open(filepath, 'wb') as file:
             file.write(serialized_data)
 
-        if not compress_copy:
-            return
-
-        with gzip_open(f'{filepath}.gz', 'wb') as file:
-            file.write(serialized_data)
-
-    def add_stop(
+    def add_node(
             self,
-            ext_stop_id: Any,
+            ext_node_id: Any,
             latitude: float,
             longitude: float,
-            ext_station_id: Any = None,
-    ) -> None:
-        if ext_stop_id in self.__stop_id_map:
-            raise Exception(f"Stop with ID '{ext_stop_id}' is already registered!")
+    ) -> int:
+        if ext_node_id in self.__node_id_map:
+            raise Exception(f"Node with ID '{ext_node_id}' is already registered!")
 
-        stop_id = len(self.stops)
+        node_id = len(self.nodes)
+        new_node = Node(latitude, longitude)
+        self.__node_id_map[ext_node_id] = node_id
+        self.nodes.append(new_node)
 
-        if ext_station_id and ext_station_id in self.__station_id_map:
-            station_id = self.__station_id_map[ext_station_id]
-        else:
-            station_id = len(self.stations)
-            self.stations.append([])
-            if ext_station_id:
-                self.__stop_id_map[ext_station_id] = station_id
-
-        new_stop = Stop(stop_id, station_id, latitude, longitude)
-        self.__stop_id_map[ext_stop_id] = stop_id
-        self.stops.append(new_stop)
-        self.stations[station_id].append(new_stop)
+        return node_id
 
     def add_conn(
             self,
             ext_trip_id: Any,
-            ext_from_stop_id: Any,
-            ext_to_stop_id: Any,
-            departure_time: datetime,
-            arrival_time: datetime,
-    ):
-        if ext_from_stop_id not in self.__stop_id_map:
-            raise Exception(f"From stop with ID '{ext_from_stop_id}' is not registered!")
-        if ext_to_stop_id not in self.__stop_id_map:
-            raise Exception(f"To stop with ID '{ext_to_stop_id}' is not registered!")
-        if departure_time < self.start or arrival_time > self.end:
-            return
+            ext_from_node_id: Any,
+            ext_to_node_id: Any,
+            departure_time: int,
+            arrival_time: int,
+    ) -> int:
+        if ext_from_node_id not in self.__node_id_map:
+            raise Exception(f"From node with ID '{ext_from_node_id}' is not registered!")
+        if ext_to_node_id not in self.__node_id_map:
+            raise Exception(f"To node with ID '{ext_to_node_id}' is not registered!")
+        if departure_time < 0 or arrival_time > self.end:
+            return -1
         if departure_time > arrival_time:
             raise Exception("Departure time cannot be later than arrival time!")
 
         if ext_trip_id not in self.__trip_id_map:
             self.trips.append([])
         trip_id = self.__trip_id_map.setdefault(ext_trip_id, len(self.__trip_id_map))
-        from_stop_id = self.__stop_id_map[ext_from_stop_id]
-        to_stop_id = self.__stop_id_map[ext_to_stop_id]
-        departure = int((departure_time - self.start).total_seconds())
-        arrival = int((arrival_time - self.start).total_seconds())
+        from_node_id = self.__node_id_map[ext_from_node_id]
+        to_node_id = self.__node_id_map[ext_to_node_id]
 
-        new_conn = Conn(trip_id, from_stop_id, to_stop_id, departure, arrival)
+        new_conn = Conn(trip_id, from_node_id, to_node_id, departure_time, arrival_time)
         self.conns.append(new_conn)
         self.trips[trip_id].append(new_conn)
 
     def add_path(
             self,
-            ext_from_stop_id: Any,
-            ext_to_stop_id: Any,
-            duration: timedelta,
-    ) -> None:
-        if ext_from_stop_id not in self.__stop_id_map:
-            raise Exception(f"From stop with ID '{ext_from_stop_id}' is not registered!")
-        if ext_to_stop_id not in self.__stop_id_map:
-            raise Exception(f"To stop with ID '{ext_to_stop_id}' is not registered!")
-        if duration < timedelta(seconds=0):
+            ext_from_node_id: Any,
+            ext_to_node_id: Any,
+            duration: int,
+    ) -> int:
+        if ext_from_node_id not in self.__node_id_map:
+            raise Exception(f"From node with ID '{ext_from_node_id}' is not registered!")
+        if ext_to_node_id not in self.__node_id_map:
+            raise Exception(f"To node with ID '{ext_to_node_id}' is not registered!")
+        if duration < 0:
             raise Exception("Path with negative duration cannot be registered!")
 
-        from_stop_id = self.__stop_id_map[ext_from_stop_id]
-        to_stop_id = self.__stop_id_map[ext_to_stop_id]
+        from_node_id = self.__node_id_map[ext_from_node_id]
+        to_node_id = self.__node_id_map[ext_to_node_id]
 
-        for path in self.paths:
-            if path.from_stop_id == from_stop_id and path.to_stop_id == to_stop_id:
-                raise Exception(f"Path from stop with ID '{ext_from_stop_id}' to stop with ID '{ext_to_stop_id}' is already "
-                                f"registered!")
+        for id, path in enumerate(self.paths):
+            if path.from_node_id == from_node_id and path.to_node_id == to_node_id:
+                path.duration = min(path.duration, duration)
+                return id
 
-        self.paths.append(Path(from_stop_id, to_stop_id, int(duration.total_seconds())))
+        self.paths.append(Path(from_node_id, to_node_id, duration))
+        return len(self.paths) - 1
