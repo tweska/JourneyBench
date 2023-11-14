@@ -21,7 +21,7 @@ def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
 
     # Register stops
     for gtfs_stop in gtfs.stops:
-        network.add_node(gtfs_stop.stop_id, gtfs_stop.stop_lat, gtfs_stop.stop_lon)
+        network.add_node(gtfs_stop.stop_id, gtfs_stop.stop_lat, gtfs_stop.stop_lon, stop=True)
 
     # Register trips
     date_trip_dict = generate_date_trip_dict(gtfs)

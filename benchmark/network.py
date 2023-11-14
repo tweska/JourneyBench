@@ -1,14 +1,7 @@
 from gzip import open
 from typing import Any, Dict, Optional
 
-from .benchmark_core import Node, Conn, Path
 from .benchmark_core import Network as CoreNetwork
-# from .benchmark_core import add_node as add_core_node
-# from .benchmark_core import add_trip as add_core_trip
-# from .benchmark_core import add_conn as add_core_conn
-# from .benchmark_core import add_path as add_core_path
-# from .benchmark_core import sort_network as sort_core_network
-
 from .network_pb2 import PBNetwork, PBNetworkNode, PBNetworkConn, PBNetworkPath
 
 
@@ -53,6 +46,7 @@ class Network(CoreNetwork):
             pb_node: PBNetworkNode = pb_network.nodes.add()
             pb_node.latitude = node.latitude
             pb_node.longitude = node.longitude
+            pb_node.stop = node.stop
 
         for conn in self.conns:
             pb_conn: PBNetworkConn = pb_network.conns.add()
