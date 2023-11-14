@@ -5,6 +5,7 @@ package network;
 message PBNetworkNode {
   double latitude = 1;
   double longitude = 2;
+  bool stop = 3;
 }
 
 message PBNetworkConn {
@@ -16,8 +17,8 @@ message PBNetworkConn {
 }
 
 message PBNetworkPath {
-  uint32 from_node_id = 1;
-  uint32 to_node_id = 2;
+  uint32 node_a_id = 1;
+  uint32 node_b_id = 2;
   uint32 duration = 3;
 }
 

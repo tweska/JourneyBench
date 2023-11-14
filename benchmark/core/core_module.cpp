@@ -8,6 +8,8 @@
 //#include "results.h"
 #include "types.h"
 
+#include "network_functions.h"
+
 namespace py = pybind11;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Node>);
@@ -34,12 +36,11 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def_readwrite("network", &Benchmark::network);
 
     py::class_<Node>(m, "Node")
-            .def(py::init<f64, f64>())
             .def_readonly("latitude", &Node::latitude)
-            .def_readonly("longitude", &Node::longitude);
+            .def_readonly("longitude", &Node::longitude)
+            .def_readonly("stop", &Node::stop);
 
     py::class_<Conn>(m, "Conn")
-            .def(py::init<u32, u32, u32, u32, u32>())
             .def_readonly("trip_id", &Conn::trip_id)
             .def_readonly("from_node_id", &Conn::from_node_id)
             .def_readonly("to_node_id", &Conn::to_node_id)
@@ -47,17 +48,45 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def_readonly("arrival_time", &Conn::arrival_time);
 
     py::class_<Path>(m, "Path")
-            .def(py::init<u32, u32, u32>())
-            .def_readonly("from_node_id", &Path::from_node_id)
-            .def_readonly("to_node_id", &Path::to_node_id)
-            .def_readwrite("duration", &Path::duration);
+            .def_readonly("node_a_id", &Path::node_a_id)
+            .def_readonly("node_b_id", &Path::node_b_id)
+            .def_readonly("duration", &Path::duration);
 
     py::class_<Network>(m, "Network")
             .def(py::init<>())
-            .def_readwrite("nodes", &Network::nodes)
-            .def_readwrite("conns", &Network::conns)
-            .def_readwrite("paths", &Network::paths)
-            .def_readwrite("trips", &Network::trips);
+            .def_readonly("nodes", &Network::nodes)
+            .def_readonly("conns", &Network::conns)
+            .def_readonly("paths", &Network::paths)
+            .def_readonly("trips", &Network::trips)
+            .def("add_node", [](Network &network,
+                                f64 latitude, f64 longitude,
+                                bool stop) {
+                return add_node(network,
+                                latitude, longitude,
+                                stop);
+            })
+            .def("add_trip", [](Network &network) {
+                return add_trip(network);
+            })
+            .def("add_conn", [](Network &network,
+                                u32 trip_id,
+                                u32 from_node_id, u32 to_node_id,
+                                u32 departure_time, u32 arrival_time) {
+                return add_conn(network,
+                                trip_id,
+                                from_node_id, to_node_id,
+                                departure_time, arrival_time);
+            })
+            .def("add_path", [](Network &network,
+                                u32 node_a_id, u32 node_b_id,
+                                u32 duration) {
+                return add_path(network,
+                                node_a_id, node_b_id,
+                                duration);
+            })
+            .def("sort", [](Network &network) {
+                return sort_network(network);
+            });
 
 //    py::class_<Query>(m, "Query")
 //            .def(py::init<u32, u32, u32>())
@@ -98,7 +127,7 @@ PYBIND11_MODULE(benchmark_core, m) {
 //            .def(py::init<u64>())
 //            .def_readonly("runtime_ns", &PreprocessingResult::runtime_ns);
 
-    py::bind_vector<std::vector<Node>>(m, "VectorStop");
+    py::bind_vector<std::vector<Node>>(m, "VectorNode");
     py::bind_vector<std::vector<Conn>>(m, "VectorConn");
     py::bind_vector<std::vector<Path>>(m, "VectorPath");
     py::bind_vector<std::vector<std::vector<Conn*>>>(m, "VectorTrip");

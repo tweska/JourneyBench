@@ -10,9 +10,7 @@ using namespace std;
 struct Node {
     f64 latitude;
     f64 longitude;
-
-    Node(f64 latitude, f64 longitude)
-        : latitude(latitude), longitude(longitude) {}
+    bool stop;
 };
 
 struct Conn {
@@ -21,18 +19,12 @@ struct Conn {
     u32 to_node_id;
     u32 departure_time;
     u32 arrival_time;
-
-    Conn(u32 trip_id, u32 from_node_id, u32 to_node_id, u32 departure_time, u32 arrival_time)
-    : trip_id(trip_id), from_node_id(from_node_id), to_node_id(to_node_id), departure_time(departure_time), arrival_time(arrival_time) {}
 };
 
 struct Path {
-    u32 from_node_id;
-    u32 to_node_id;
+    u32 node_a_id;
+    u32 node_b_id;
     u32 duration;
-
-    Path(u32 from_node_id, u32 to_node_id, u32 duration)
-        : from_node_id(from_node_id), to_node_id(to_node_id), duration(duration) {}
 };
 
 struct Network {
