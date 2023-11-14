@@ -10,8 +10,8 @@ from .network_pb2 import PBNetwork, PBNetworkNode, PBNetworkConn, PBNetworkPath
 class Network(CoreNetwork):
     end: Optional[int]
 
-    __node_id_map: Dict[Any, int] = {}
-    __trip_id_map: Dict[Any, int] = {}
+    __node_id_map: Optional[Dict[Any, int]] = None
+    __trip_id_map: Optional[Dict[Any, int]] = None
 
     def __init__(self, end: Optional[int] = None):
         super().__init__()
@@ -80,6 +80,8 @@ class Network(CoreNetwork):
             latitude: float,
             longitude: float,
     ) -> int:
+        if self.__node_id_map is None:
+            self.__node_id_map = {i: i for i in range(len(self.nodes))}
         if ext_node_id in self.__node_id_map:
             raise Exception(f"Node with ID '{ext_node_id}' is already registered!")
 
@@ -98,6 +100,8 @@ class Network(CoreNetwork):
             departure_time: int,
             arrival_time: int,
     ) -> int:
+        if self.__node_id_map is None:
+            self.__node_id_map = {i: i for i in range(len(self.nodes))}
         if ext_from_node_id not in self.__node_id_map:
             raise Exception(f"From node with ID '{ext_from_node_id}' is not registered!")
         if ext_to_node_id not in self.__node_id_map:
@@ -107,6 +111,8 @@ class Network(CoreNetwork):
         if departure_time > arrival_time:
             raise Exception("Departure time cannot be later than arrival time!")
 
+        if self.__trip_id_map is None:
+            self.__trip_id_map = {i: i for i in range(len(self.trips))}
         if ext_trip_id not in self.__trip_id_map:
             self.trips.append([])
         trip_id = self.__trip_id_map.setdefault(ext_trip_id, len(self.__trip_id_map))
@@ -132,11 +138,5 @@ class Network(CoreNetwork):
 
         from_node_id = self.__node_id_map[ext_from_node_id]
         to_node_id = self.__node_id_map[ext_to_node_id]
-
-        for id, path in enumerate(self.paths):
-            if path.from_node_id == from_node_id and path.to_node_id == to_node_id:
-                path.duration = min(path.duration, duration)
-                return id
-
         self.paths.append(Path(from_node_id, to_node_id, duration))
         return len(self.paths) - 1

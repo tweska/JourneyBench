@@ -3,11 +3,12 @@
 import argparse
 from datetime import date, datetime, time, timedelta
 from os.path import getsize
-from typing import Optional
+from typing import Optional, Tuple
 
 from benchmark import Network
 from gtfs import GTFS, read
 from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
+from osm import combine
 
 
 def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
@@ -48,6 +49,19 @@ def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
     return network
 
 
+def add_footpaths(gtfs: GTFS, network: Network, speed=4.5) -> Tuple[int, int]:
+    speed = speed * 1000 / 3600
+    stops = [(gtfs_stop.stop_id, gtfs_stop.stop_lat, gtfs_stop.stop_lon) for gtfs_stop in gtfs.stops]
+    G = combine(stops)
+    for node_id, data in G.nodes(data=True):
+        if 'keep' in data and data['keep']:
+            continue
+        network.add_node(node_id, data['lat'], data['lon'])
+    for node_a, node_b, dist in G.edges(data='distance'):
+        network.add_path(node_a, node_b, int(dist / speed))
+    return G.number_of_nodes(), G.number_of_edges()
+
+
 def main():
     argparser = argparse.ArgumentParser(
         prog='parseGTFS',
@@ -62,6 +76,8 @@ def main():
                            help='first date of the transit timetable')
     argparser.add_argument('-c', '--count', type=int, default=1,
                            help='number of days in the transit timetable')
+    argparser.add_argument('-p', '--paths', action='store_true',
+                           help='generate footpath graph from OSM data')
     argparser.add_argument('-v', '--verbose', action='store_true',
                            help='print helpful messages')
     args = argparser.parse_args()
@@ -76,13 +92,28 @@ def main():
         print(f"    stop times:  {len(gtfs.stop_times):>8}")
 
     network: Network = gtfs2network(gtfs, args.date, args.count)
-    if args.verbose:
-        print(f"\nstats for network file '{args.output}':")
+    if args.paths and args.verbose:
+        print(f"\nextracted from GTFS file '{args.input}':")
         print(f"    end:        {network.end:>8}")
         print(f"    nodes:      {len(network.nodes):>8}")
         print(f"    trips:      {len(network.trips):>8}")
         print(f"    conns:      {len(network.conns):>8}")
-        print(f"    paths:      {len(network.paths):>8}")
+
+    if args.paths:
+        if args.verbose:
+            print(f"\nObtaining footpaths, this may take a while...")
+        n, p = add_footpaths(gtfs, network)
+        if args.verbose:
+            print(f"\nextracted from OpenStreetMaps:")
+            print(f"    nodes:      {n:>8}")
+            print(f"    paths:      {p:>8}")
+
+    print(f"\nstats for network file '{args.output}'")
+    print(f"    end:        {network.end:>8}")
+    print(f"    nodes:      {len(network.nodes):>8}")
+    print(f"    trips:      {len(network.trips):>8}")
+    print(f"    conns:      {len(network.conns):>8}")
+    print(f"    paths:      {len(network.paths):>8}")
 
     network.write(args.output)
     if args.verbose:

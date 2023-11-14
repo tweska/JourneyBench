@@ -19,6 +19,9 @@ venv/
 # Input data
 data/
 
+# OSM cache
+cache/
+
 # Editors
 .idea/
 .vscode/
