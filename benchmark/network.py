@@ -92,7 +92,7 @@ class Network(CoreNetwork):
             raise Exception(f"From node with ID '{ext_from_node_id}' is not registered!")
         if ext_to_node_id not in self.__node_id_map:
             raise Exception(f"To node with ID '{ext_to_node_id}' is not registered!")
-        if departure_time < 0 or arrival_time > self.end:
+        if departure_time < 0 or self.end and arrival_time > self.end:
             return
         if departure_time > arrival_time:
             raise Exception("Departure time cannot be later than arrival time!")
