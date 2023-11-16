@@ -1,0 +1,80 @@
+#!/usr/bin/env python3
+
+import argparse
+from collections import defaultdict
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+from benchmark import Network
+
+LINEWIDTH = 0.5
+CMAP = plt.get_cmap('RdYlGn')
+
+
+def count_connections(network: Network):
+    nodes, conns = defaultdict(int), defaultdict(int)
+    for conn in network.conns:
+        nodes[conn.from_node_id] += 1
+        nodes[conn.to_node_id] += 1
+        conns[(conn.from_node_id, conn.to_node_id)] += 1
+    return nodes, conns
+
+
+def plot_network(network: Network, filepath: str=None) -> None:
+    nc, cc = count_connections(network)
+    ncm = CMAP(np.linspace(0, 1, max(nc.values()) + 1))
+    ccm = CMAP(np.linspace(0, 1, max(cc.values()) + 1))
+
+    fig, ax = plt.subplots(frameon=False)
+    ax.set_axis_off()
+
+    # Footpaths
+    p = np.array([((network.nodes[path.node_a_id].longitude, network.nodes[path.node_a_id].latitude),
+                   (network.nodes[path.node_b_id].longitude, network.nodes[path.node_b_id].latitude),
+                   (None, None)) for path in network.paths]).reshape((-1, 2))
+    ax.plot(p[:,0], p[:,1], c='#000000', marker=None, linewidth=LINEWIDTH, zorder=0)
+
+    # Connections
+    for (a, b), c in cc.items():
+        x = (network.nodes[a].longitude, network.nodes[b].longitude)
+        y = (network.nodes[a].latitude, network.nodes[b].latitude)
+        ax.plot(x, y, c=ccm[c], marker=None, linewidth=LINEWIDTH*2, zorder=2)
+
+    # Generic Nodes
+    g = np.array([(node.longitude, node.latitude) for node in network.nodes if not node.stop])
+    ax.scatter(g[:,0], g[:,1], c='#000000', marker='.', linewidths=LINEWIDTH, zorder=1)
+
+    # Stop Nodes
+    s = np.array([(node.longitude, node.latitude) for node in network.nodes if node.stop])
+    nc = np.array([ncm[nc[i]] for i, node in enumerate(network.nodes) if node.stop])
+    ax.scatter(s[:,0], s[:,1], c=nc, marker='.', linewidths=LINEWIDTH*2, zorder=3)
+
+    # Plot with a very small margin
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    plt.margins(0.01, 0.01)
+
+    if filepath:
+        plt.savefig(filepath)
+    else:
+        plt.show()
+
+
+def main():
+    argparser = argparse.ArgumentParser(
+        prog='plotNetwork',
+        description='Plot a network using Matplotlib.'
+    )
+    argparser.add_argument('network', help='network file (.network) to plot')
+    argparser.add_argument('-o', '--output', required=False, default=None,
+                           help='optional file two plot to')
+    args = argparser.parse_args()
+
+    network = Network()
+    network.read(args.network)
+
+    plot_network(network, args.output)
+
+
+if __name__ == '__main__':
+    main()
