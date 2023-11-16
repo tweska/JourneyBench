@@ -49,10 +49,10 @@ def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
     return network
 
 
-def add_footpaths(gtfs: GTFS, network: Network, speed=4.5) -> Tuple[int, int]:
+def add_footpaths(gtfs: GTFS, network: Network, speed=4.5, verbose=False) -> Tuple[int, int]:
     speed = speed * 1000 / 3600
     stops = [(gtfs_stop.stop_id, gtfs_stop.stop_lat, gtfs_stop.stop_lon) for gtfs_stop in gtfs.stops]
-    G = combine(stops)
+    G = combine(stops, verbose=verbose)
     for node_id, data in G.nodes(data=True):
         if 'keep' in data and data['keep']:
             continue
@@ -102,7 +102,7 @@ def main():
     if args.paths:
         if args.verbose:
             print(f"\nObtaining footpaths, this may take a while...")
-        n, p = add_footpaths(gtfs, network)
+        n, p = add_footpaths(gtfs, network, verbose=args.verbose)
         if args.verbose:
             print(f"\nextracted from OpenStreetMaps:")
             print(f"    nodes:      {n:>8}")

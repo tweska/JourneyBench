@@ -34,7 +34,7 @@ def osm_graph_from_bbox(north: float, east: float, south: float, west: float) ->
     M = ox.graph_from_bbox(
         north, south, east, west,
         network_type='walk',
-        simplify=False,
+        simplify=True,
         retain_all=True,
         truncate_by_edge=False,
     )
@@ -42,7 +42,6 @@ def osm_graph_from_bbox(north: float, east: float, south: float, west: float) ->
     G = nx.Graph()
     G.add_nodes_from([(f'__OSM_{v}', {'lat': d['y'], 'lon': d['x']}) for v, d in M.nodes(data=True)])
     G.add_edges_from([(f'__OSM_{u}', f'__OSM_{v}') for u, v in M.edges(data=False)])
-    # G.add_edges_from(list(M.edges(data=False)))
     return G
 
 
@@ -57,21 +56,24 @@ def set_distance(G: nx.Graph) -> None:
                                               G.nodes[v]['lat'], G.nodes[v]['lon'])
 
 
-def contract(G: nx.Graph, rounds=100) -> nx.Graph:
+def contract(G: nx.Graph, rounds=100, verbose=False) -> nx.Graph:
     """
     Create a simplified version of the graph with no edges with a degree less
     than 3 and all connected components containing at least one transit stops.
     :param G: NetworkX Graph with attribute 'distance' on edges
     :param rounds: maximum number of iterations to run the contraction
+    :param verbose: print helpful messages
     :return: a contracted copy of the original graph
     """
     # Remove all connected components without a transit stop.
+    if verbose:
+        print("Remove connected components without a transit stop...")
     cc = list(nx.connected_components(G))
     fc = [c for c in cc if any([G.nodes[v].get('keep') is True for v in c])]
     G = G.subgraph(v for c in fc for v in c).copy()
 
     # Remove all nodes with a degree less than 3.
-    for _ in range(rounds):
+    for i in range(rounds):
         count = 0
         for v, keep in list(G.nodes(data='keep', default=False)):
             d = G.degree[v]
@@ -86,6 +88,8 @@ def contract(G: nx.Graph, rounds=100) -> nx.Graph:
                     G.add_edge(u, w, distance=G.edges[u, v]['distance'] + G.edges[v, w]['distance'])
             G.remove_node(v)
             count += 1
+        if verbose:
+            print(f"Contraction round {i} completed, removed {count} nodes!")
         if count == 0:
             break
 
@@ -108,10 +112,11 @@ def add_stops(G: nx.Graph, stops: List[Tuple[Any, float, float]]) -> None:
         G.add_edge(u, v)
 
 
-def combine(stops: List[Tuple[Any, float, float]]) -> nx.Graph:
+def combine(stops: List[Tuple[Any, float, float]], verbose=False) -> nx.Graph:
     """
     Combine a list of transit-stops with OpenStreetMaps footpath data.
     :param stops: list of stops, each as a 3-tuple: id, latitude, longitude
+    :param verbose: print helpful messages
     :return: transfer graph as a NetworkX Graph
     """
     # Determine bounding box.
@@ -121,9 +126,17 @@ def combine(stops: List[Tuple[Any, float, float]]) -> nx.Graph:
     west = min(list(zip(*stops))[2])
 
     # Obtain the graph, add stops and simplify.
+    if verbose:
+        print("Obtaining initial graph...")
     G = osm_graph_from_bbox(north, east, south, west)
+    if verbose:
+        print("Adding stops...")
     add_stops(G, stops)
+    if verbose:
+        print("Setting distances...")
     set_distance(G)
-    G = contract(G)
+    if verbose:
+        print("Contracting graph...")
+    G = contract(G, verbose=verbose)
 
     return G
