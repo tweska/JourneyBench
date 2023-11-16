@@ -28,4 +28,6 @@ message PBNetwork {
   repeated PBNetworkPath paths = 3;
 
   uint32 trip_count = 4;
+
+  uint32 end_time = 5;
 }

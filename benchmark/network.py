@@ -21,6 +21,7 @@ class Network(CoreNetwork):
             pb_network.ParseFromString(file.read())
 
         [self.add_trip() for _ in range(pb_network.trip_count)]
+        self.end = pb_network.end_time
 
         for node_id, pb_node in enumerate(pb_network.nodes):
             self.add_node(node_id,
@@ -40,6 +41,7 @@ class Network(CoreNetwork):
         self.sort()
 
         pb_network: PBNetwork = PBNetwork()
+        pb_network.end_time = self.end
         pb_network.trip_count = len(self.trips)
 
         for node in self.nodes:
@@ -92,7 +94,7 @@ class Network(CoreNetwork):
             raise Exception(f"From node with ID '{ext_from_node_id}' is not registered!")
         if ext_to_node_id not in self.__node_id_map:
             raise Exception(f"To node with ID '{ext_to_node_id}' is not registered!")
-        if departure_time < 0 or self.end and arrival_time > self.end:
+        if departure_time < 0 or arrival_time > self.end:
             return
         if departure_time > arrival_time:
             raise Exception("Departure time cannot be later than arrival time!")
