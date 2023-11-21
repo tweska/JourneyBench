@@ -2,8 +2,10 @@ import math
 from typing import Any, List, Tuple
 
 import networkx as nx
+import numpy as np
 import osmnx as ox
-from scipy.spatial import KDTree
+from scipy.spatial import ConvexHull, KDTree
+from shapely import Polygon
 
 
 def haversine(lat_a: float, lon_a: float, lat_b: float, lon_b: float, r: float = 6371008.7714) -> float:
@@ -22,17 +24,38 @@ def haversine(lat_a: float, lon_a: float, lat_b: float, lon_b: float, r: float =
     )))
 
 
-def osm_graph_from_bbox(north: float, east: float, south: float, west: float) -> nx.Graph:
+def extended_convex_hull(points: List[Tuple[float, float]], dist: float = 1000, r: float = 6371008.7714) -> List[Tuple[float, float]]:
     """
-    Obtain a NetworkX Graph from OpenStreetMaps footpath data.
-    :param north: maximum latitude
-    :param east: maximum longitude
-    :param south: minimum latitude
-    :param west: minimum longitude
-    :return: an undirected NetworkX Graph
+    Create a convex hull around a list of points, extend the hull by a given distance.
+    :param points: a list of points (lat, lon) to find the convex hull for
+    :param dist: how far to extend the convex hull (in meters)
+    :param r: radius of the sphere, default is the mean radius of Earth in meters as defined by the IUGG (Geodetic Reference System 1980)
+    :return: a list of points describing the (extended) convex hull
     """
-    M = ox.graph_from_bbox(
-        north, south, east, west,
+    convex_points = np.array([points[i] for i in ConvexHull(points).vertices])
+    if dist == 0:
+        return convex_points
+
+    norm_vectors = []
+    for i, v in enumerate(convex_points):
+        nu = v - convex_points[(i-1) % len(convex_points)]
+        nw = v - convex_points[(i+1) % len(convex_points)]
+        vector = (nu / np.linalg.norm(nu)) + (nw / np.linalg.norm(nw))
+        norm_vectors.append(vector / np.linalg.norm(vector))
+    norm_vectors = np.array(norm_vectors)
+
+    diff = [(math.fabs(math.degrees(dist / (r * math.sin(math.radians(p[1]))))),
+             math.fabs(math.degrees(dist / (r * math.cos(math.radians(p[0])))))) for p in convex_points]
+    return convex_points + diff * norm_vectors
+
+
+def osm_graph_from_points(points: List[Tuple[float, float]], periphery: float = 1000) -> nx.Graph:
+    convex = extended_convex_hull(points, periphery)
+    print(convex)
+    polygon = Polygon([(y, x) for x, y in convex])
+    print(polygon)
+    F = ox.graph_from_polygon(
+        polygon,
         network_type='walk',
         simplify=False,
         retain_all=True,
@@ -40,8 +63,8 @@ def osm_graph_from_bbox(north: float, east: float, south: float, west: float) ->
     )
 
     G = nx.Graph()
-    G.add_nodes_from([(f'__OSM_{v}', {'lat': d['y'], 'lon': d['x']}) for v, d in M.nodes(data=True)])
-    G.add_edges_from([(f'__OSM_{u}', f'__OSM_{v}') for u, v in M.edges(data=False) if u is not v])
+    G.add_nodes_from([(f'__OSM_{v}', {'lat': d['y'], 'lon': d['x']}) for v, d in F.nodes(data=True)])
+    G.add_edges_from([(f'__OSM_{u}', f'__OSM_{v}') for u, v in F.edges(data=False) if u is not v])
     return G
 
 
@@ -119,16 +142,10 @@ def combine(stops: List[Tuple[Any, float, float]], verbose=False) -> nx.Graph:
     :param verbose: print helpful messages
     :return: transfer graph as a NetworkX Graph
     """
-    # Determine bounding box.
-    north = max(list(zip(*stops))[1])
-    south = min(list(zip(*stops))[1])
-    east = max(list(zip(*stops))[2])
-    west = min(list(zip(*stops))[2])
-
     # Obtain the graph, add stops and simplify.
     if verbose:
         print("Obtaining initial graph...")
-    G = osm_graph_from_bbox(north, east, south, west)
+    G = osm_graph_from_points([(lat, lon) for _, lat, lon in stops])
     if verbose:
         print("Adding stops...")
     add_stops(G, stops)
