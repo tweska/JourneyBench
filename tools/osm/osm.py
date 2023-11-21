@@ -34,14 +34,14 @@ def osm_graph_from_bbox(north: float, east: float, south: float, west: float) ->
     M = ox.graph_from_bbox(
         north, south, east, west,
         network_type='walk',
-        simplify=True,
+        simplify=False,
         retain_all=True,
         truncate_by_edge=False,
     )
 
     G = nx.Graph()
     G.add_nodes_from([(f'__OSM_{v}', {'lat': d['y'], 'lon': d['x']}) for v, d in M.nodes(data=True)])
-    G.add_edges_from([(f'__OSM_{u}', f'__OSM_{v}') for u, v in M.edges(data=False)])
+    G.add_edges_from([(f'__OSM_{u}', f'__OSM_{v}') for u, v in M.edges(data=False) if u is not v])
     return G
 
 
