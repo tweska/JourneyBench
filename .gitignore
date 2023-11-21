@@ -22,6 +22,11 @@ data/
 # OSM cache
 cache/
 
+# Other random files
+*.pickle
+*.txt
+*.zip
+
 # Editors
 .idea/
 .vscode/

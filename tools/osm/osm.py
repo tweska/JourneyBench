@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import math
 from typing import Any, List, Tuple
 
@@ -5,7 +7,7 @@ import networkx as nx
 import numpy as np
 import osmnx as ox
 from scipy.spatial import ConvexHull, KDTree
-from shapely import Polygon
+from shapely.geometry import Polygon
 
 
 def haversine(lat_a: float, lon_a: float, lat_b: float, lon_b: float, r: float = 6371008.7714) -> float:
@@ -51,9 +53,7 @@ def extended_convex_hull(points: List[Tuple[float, float]], dist: float = 1000, 
 
 def osm_graph_from_points(points: List[Tuple[float, float]], periphery: float = 1000) -> nx.Graph:
     convex = extended_convex_hull(points, periphery)
-    print(convex)
     polygon = Polygon([(y, x) for x, y in convex])
-    print(polygon)
     F = ox.graph_from_polygon(
         polygon,
         network_type='walk',
@@ -157,3 +157,26 @@ def combine(stops: List[Tuple[Any, float, float]], verbose=False) -> nx.Graph:
     G = contract(G, verbose=verbose)
 
     return G
+
+
+if __name__ == '__main__':
+    import argparse
+    import pickle
+
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('stops')
+    argparser.add_argument('graph')
+    args = argparser.parse_args()
+
+    with open(args.stops, 'r') as file:
+        stops = [(i, float(a), float(b)) for i, a, b in [line for line in [line.split(' ') for line in file]]]
+    if len(stops) < 3:
+        exit(-1)
+
+    G = combine(stops, True)
+    nodes = {v: data for v, data in G.nodes(data=True)}
+    edges = {(u, v): data for u, v, data in G.edges(data=True)}
+
+    print(f"Dumping {len(nodes)} nodes and {len(edges)} edges to '{args.graph}'!")
+    with open(args.graph, 'wb') as file:
+        pickle.dump((nodes, edges), file)
