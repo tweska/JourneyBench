@@ -8,12 +8,14 @@ from .network_pb2 import PBNetwork, PBNetworkNode, PBNetworkConn, PBNetworkPath
 class Network(CoreNetwork):
     end: Optional[int]
 
-    __node_id_map: Optional[Dict[Any, int]] = {}
-    __trip_id_map: Optional[Dict[Any, int]] = {}
+    __node_id_map: Dict[Any, int]
+    __trip_id_map: Dict[Any, int]
 
     def __init__(self, end: Optional[int] = None):
         super().__init__()
         self.end = end
+        self.__node_id_map = {}
+        self.__trip_id_map = {}
 
     def read(self, filepath: str) -> None:
         pb_network: PBNetwork = PBNetwork()
