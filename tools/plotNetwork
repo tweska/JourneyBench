@@ -33,7 +33,8 @@ def plot_network(network: Network, filepath: str=None) -> None:
     p = np.array([((network.nodes[path.node_a_id].longitude, network.nodes[path.node_a_id].latitude),
                    (network.nodes[path.node_b_id].longitude, network.nodes[path.node_b_id].latitude),
                    (None, None)) for path in network.paths]).reshape((-1, 2))
-    ax.plot(p[:,0], p[:,1], c='#000000', marker=None, linewidth=LINEWIDTH, zorder=0)
+    if len(p) > 0:
+        ax.plot(p[:, 0], p[:, 1], c='#000000', marker=None, linewidth=LINEWIDTH, zorder=0)
 
     # Connections
     for (a, b), c in cc.items():
@@ -43,12 +44,14 @@ def plot_network(network: Network, filepath: str=None) -> None:
 
     # Generic Nodes
     g = np.array([(node.longitude, node.latitude) for node in network.nodes if not node.stop])
-    ax.scatter(g[:,0], g[:,1], c='#000000', marker='.', linewidths=LINEWIDTH, zorder=1)
+    if len(g) > 0:
+        ax.scatter(g[:, 0], g[:, 1], c='#000000', marker='.', linewidths=LINEWIDTH, zorder=1)
 
     # Stop Nodes
     s = np.array([(node.longitude, node.latitude) for node in network.nodes if node.stop])
     nc = np.array([ncm[nc[i]] for i, node in enumerate(network.nodes) if node.stop])
-    ax.scatter(s[:,0], s[:,1], c=nc, marker='.', linewidths=LINEWIDTH*2, zorder=3)
+    if len(s) > 0:
+        ax.scatter(s[:, 0], s[:, 1], c=nc, marker='.', linewidths=LINEWIDTH*2, zorder=3)
 
     # Plot with a very small margin
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
