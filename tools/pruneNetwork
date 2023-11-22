@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+
+import argparse
+
+from shapely import Point, Polygon
+
+from benchmark import Network
+
+
+def main():
+    argparser = argparse.ArgumentParser(
+        prog='pruneNetwork',
+        description='Tool to prune the network based on a polygon.'
+    )
+    argparser.add_argument('input', help='.network file')
+    argparser.add_argument('polygon', help='.txt file with polygon coordinates')
+    argparser.add_argument('output', help='.network file')
+    args = argparser.parse_args()
+
+    # Read the polygon.
+    points = []
+    with open(args.polygon, 'r') as file:
+        for line in file:
+            lat, lon = [float(x) for x in line.split(' ')]
+            points.append((lon, lat))
+    polygon = Polygon(points)
+
+    # Load the original network.
+    old = Network()
+    old.read(args.input)
+
+    # Find the nodes that are not contained in the polygon.
+    remove = []
+    for i, node in enumerate(old.nodes):
+        point = Point(node.longitude, node.latitude)
+        if not polygon.contains(point):
+            remove.append(i)
+
+    # Reconstruct the network without the removed nodes.
+    new = Network(old.end)
+    for i, node in enumerate(old.nodes):
+        if i not in remove:
+            new.add_node(i, node.latitude, node.longitude, node.stop)
+    for conn in old.conns:
+        if conn.from_node_id not in remove and conn.to_node_id not in remove:
+            new.add_conn(conn.trip_id, conn.from_node_id, conn.to_node_id, conn.departure_time, conn.arrival_time)
+    for path in old.paths:
+        if path.node_a_id not in remove and path.node_b_id not in remove:
+            new.add_path(path.node_a_id, path.node_b_id, path.duration)
+
+    # Write resulting network to file.
+    new.write(args.output)
+
+
+if __name__ == '__main__':
+    main()
