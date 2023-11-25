@@ -17,6 +17,10 @@ class Network(CoreNetwork):
         self.__node_id_map = {}
         self.__trip_id_map = {}
 
+    def __repr__(self):
+        return (f"Network(stops: {sum([1 for n in self.nodes if n.stop])}, trips: {len(self.trips)}, "
+                f"conns: {len(self.conns)}, nodes: {len(self.nodes)}, paths: {len(self.paths)})")
+
     def read(self, filepath: str) -> None:
         pb_network: PBNetwork = PBNetwork()
         with open(filepath, 'rb') as file:

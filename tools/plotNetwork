@@ -8,7 +8,7 @@ import numpy as np
 
 from benchmark import Network
 
-LINEWIDTH = 0.5
+LINEWIDTH = 1
 CMAP = plt.get_cmap('RdYlGn')
 
 
@@ -26,7 +26,7 @@ def plot_network(network: Network, filepath: str=None) -> None:
     ncm = CMAP(np.linspace(0, 1, max(nc.values()) + 1))
     ccm = CMAP(np.linspace(0, 1, max(cc.values()) + 1))
 
-    fig, ax = plt.subplots(frameon=False)
+    fig, ax = plt.subplots(figsize=(5, 5), frameon=False)
     ax.set_axis_off()
 
     # Footpaths
@@ -40,7 +40,7 @@ def plot_network(network: Network, filepath: str=None) -> None:
     for (a, b), c in cc.items():
         x = (network.nodes[a].longitude, network.nodes[b].longitude)
         y = (network.nodes[a].latitude, network.nodes[b].latitude)
-        ax.plot(x, y, c=ccm[c], marker=None, linewidth=LINEWIDTH*2, zorder=2)
+        ax.plot(x, y, c=ccm[c], marker=None, linewidth=LINEWIDTH, zorder=2)
 
     # Generic Nodes
     g = np.array([(node.longitude, node.latitude) for node in network.nodes if not node.stop])
@@ -48,17 +48,21 @@ def plot_network(network: Network, filepath: str=None) -> None:
         ax.scatter(g[:, 0], g[:, 1], c='#000000', marker='.', linewidths=LINEWIDTH, zorder=1)
 
     # Stop Nodes
-    s = np.array([(node.longitude, node.latitude) for node in network.nodes if node.stop])
-    nc = np.array([ncm[nc[i]] for i, node in enumerate(network.nodes) if node.stop])
-    if len(s) > 0:
-        ax.scatter(s[:, 0], s[:, 1], c=nc, marker='.', linewidths=LINEWIDTH*2, zorder=3)
+    n = [nc[i] for i, node in enumerate(network.nodes) if node.stop]
+    x = [node.longitude for node in network.nodes if node.stop]
+    y = [node.latitude for node in network.nodes if node.stop]
+    nc = [ncm[c] for c in n]
+    _, x, y, nc = list(zip(*sorted(zip(n, x, y, nc), key=lambda i: i[0])))
+    if len(x) > 0:
+        ax.scatter(x, y, c=nc, marker='.', linewidths=LINEWIDTH, zorder=3)
 
     # Plot with a very small margin
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
     plt.margins(0.01, 0.01)
+    plt.axis('equal')
 
     if filepath:
-        plt.savefig(filepath)
+        plt.savefig(filepath, dpi=100)
     else:
         plt.show()
 
@@ -75,7 +79,7 @@ def main():
 
     network = Network()
     network.read(args.network)
-
+    print(network)
     plot_network(network, args.output)
 
 
