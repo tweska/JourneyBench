@@ -23,11 +23,11 @@ class Queries(CoreQueries):
             pb_queries.ParseFromString(file.read())
 
         for pb_query in pb_queries.queries:
-            self.queries.append(Query(
+            self.add_query(
                 pb_query.from_node_id,
                 pb_query.to_node_id,
                 pb_query.departure_time,
-            ))
+            )
 
     def write(self, filepath: str) -> None:
         pb_queries: PBQueries = PBQueries()

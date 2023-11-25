@@ -16,16 +16,10 @@ message PBJourney {
   repeated PBJourneyLeg legs = 1;
 }
 
-enum PBQueryType {
-  EAT = 0;
-  BIC = 1;
-}
-
 message PBQueryResult {
   uint32 query_id = 1;
   uint64 runtime_ns = 2;
-  PBQueryType type = 3;
-  repeated PBJourney journeys = 4;
+  repeated PBJourney journeys = 3;
 }
 
 message PBPreprocessingResult {

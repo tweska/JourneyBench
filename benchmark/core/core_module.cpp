@@ -29,21 +29,18 @@ PYBIND11_MAKE_OPAQUE(std::vector<std::vector<Conn*>>);
 
 PYBIND11_MAKE_OPAQUE(std::vector<Query>);
 
-//PYBIND11_MAKE_OPAQUE(std::vector<QueryResult>);
-//PYBIND11_MAKE_OPAQUE(std::vector<Journey>);
-//PYBIND11_MAKE_OPAQUE(std::vector<JourneyLeg>);
-//PYBIND11_MAKE_OPAQUE(std::vector<u32>);
+PYBIND11_MAKE_OPAQUE(std::vector<QueryResult>);
+PYBIND11_MAKE_OPAQUE(std::vector<Journey>);
+PYBIND11_MAKE_OPAQUE(std::vector<JourneyLeg>);
+PYBIND11_MAKE_OPAQUE(std::vector<u32>);
 
 PYBIND11_MODULE(benchmark_core, m) {
     py::class_<Benchmark>(m, "Benchmark")
             .def(py::init<>())
             .def("set_algorithm", &Benchmark::set_algorithm)
+            .def("set_network", &Benchmark::set_network)
             .def("run_preprocessing", &Benchmark::run_preprocessing)
-            .def("run_single_eat_query", &Benchmark::run_single_eat_query)
-            .def("run_single_bic_query", &Benchmark::run_single_bic_query)
-            .def("supports_eat_query", &Benchmark::supports_eat_query)
-            .def("supports_bic_query", &Benchmark::supports_bic_query)
-            .def_readwrite("network", &Benchmark::network);
+            .def("run_query", &Benchmark::run_query);
 
     py::class_<Node>(m, "Node")
             .def_readonly("latitude", &Node::latitude)
@@ -88,7 +85,6 @@ PYBIND11_MODULE(benchmark_core, m) {
             });
 
     py::class_<Query>(m, "Query")
-            .def(py::init<u32, u32, u32>())
             .def_readonly("from_node_id", &Query::from_node_id)
             .def_readonly("to_node_id", &Query::to_node_id)
             .def_readonly("departure_time", &Query::departure_time);
@@ -101,34 +97,36 @@ PYBIND11_MODULE(benchmark_core, m) {
                 return queries.queries.size() - 1;
             });
 
-//    py::enum_<LegType>(m, "LegType")
-//            .value("CONN", LegType::CONN)
-//            .value("PATH", LegType::PATH)
-//            .export_values();
-//
-//    py::class_<JourneyLeg>(m, "JourneyLeg")
-//            .def(py::init<LegType>())
-//            .def_readonly("type", &JourneyLeg::type)
-//            .def_readwrite("parts", &JourneyLeg::parts);
-//
-//    py::class_<Journey>(m, "Journey")
-//            .def(py::init<>())
-//            .def_readwrite("legs", &Journey::legs);
-//
-//    py::enum_<QueryType>(m, "QueryType")
-//            .value("EAT", QueryType::EAT)
-//            .value("BIC", QueryType::BIC)
-//            .export_values();
-//
-//    py::class_<QueryResult>(m, "QueryResult")
-//            .def(py::init<u64, QueryType>())
-//            .def_readonly("runtime_ns", &QueryResult::runtime_ns)
-//            .def_readonly("type", &QueryResult::type)
-//            .def_readwrite("journeys", &QueryResult::journeys);
-//
-//    py::class_<PreprocessingResult>(m, "PreprocessingResult")
-//            .def(py::init<u64>())
-//            .def_readonly("runtime_ns", &PreprocessingResult::runtime_ns);
+    py::enum_<LegType>(m, "LegType")
+            .value("CONN", LegType::CONN)
+            .value("PATH", LegType::PATH)
+            .export_values();
+
+    py::class_<JourneyLeg>(m, "JourneyLeg")
+            .def(py::init<LegType>())
+            .def_readonly("type", &JourneyLeg::type)
+            .def_readonly("parts", &JourneyLeg::parts)
+            .def("add_part", [](JourneyLeg &leg, u32 part) {
+                leg.parts.push_back(part);
+            });
+
+    py::class_<Journey>(m, "Journey")
+            .def(py::init<>())
+            .def_readonly("legs", &Journey::legs)
+            .def("add_leg", [](Journey &journey, JourneyLeg &leg) {
+                journey.legs.push_back(leg);
+            });
+
+    py::class_<QueryResult>(m, "QueryResult")
+            .def(py::init<u64>())
+            .def_readonly("runtime_ns", &QueryResult::runtime_ns)
+            .def_readonly("journeys", &QueryResult::journeys)
+            .def("add_journey", [](QueryResult &result, Journey &journey) {
+                result.journeys.push_back(journey);
+            });
+
+    py::class_<PreprocessingResult>(m, "PreprocessingResult")
+            .def_readonly("runtime_ns", &PreprocessingResult::runtime_ns);
 
     py::bind_vector<std::vector<Node>>(m, "VectorNode");
     py::bind_vector<std::vector<Conn>>(m, "VectorConn");
@@ -137,8 +135,8 @@ PYBIND11_MODULE(benchmark_core, m) {
 
     py::bind_vector<std::vector<Query>>(m, "VectorQuery");
 
-//    py::bind_vector<std::vector<QueryResult>>(m, "VectorQueryResult");
-//    py::bind_vector<std::vector<Journey>>(m, "VectorJourney");
-//    py::bind_vector<std::vector<JourneyLeg>>(m, "VectorJourneyLeg");
-//    py::bind_vector<std::vector<u32>>(m, "Vector_u32");
+    py::bind_vector<std::vector<QueryResult>>(m, "VectorQueryResult");
+    py::bind_vector<std::vector<Journey>>(m, "VectorJourney");
+    py::bind_vector<std::vector<JourneyLeg>>(m, "VectorJourneyLeg");
+    py::bind_vector<std::vector<u32>>(m, "Vector_u32");
 }

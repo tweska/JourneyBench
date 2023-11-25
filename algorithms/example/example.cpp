@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "algobase.h"
+#include "algorithm.h"
 #include "network.h"
 #include "results.h"
 #include "types.h"
@@ -8,7 +8,7 @@
 using namespace std;
 
 // TODO: Choose base class(es) based on algorithm capabilities.
-class ExampleAlgorithm : public AlgorithmEAT, public AlgorithmBiC {
+class ExampleAlgorithm : public AlgorithmBase {
     int init(Network *network) override {
         (void) network;
         cerr << "Initializing ExampleAlgorithm!" << endl;
@@ -16,11 +16,11 @@ class ExampleAlgorithm : public AlgorithmEAT, public AlgorithmBiC {
         return 0;
     }
 
-    Journey *query_eat(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-        cerr << "Running EAT query from " << from_stop_id << " to " << to_stop_id << " at time " << departure_time << endl;
-        // TODO: Implement EAT query here!
+    vector<Journey> *query(u32 from_node_id, u32 to_node_id, u32 departure_time) {
+        cerr << "Running query from " << from_node_id << " to " << to_node_id << " at time " << departure_time << endl;
+        // TODO: Implement query here!
 
-        Journey *result = new Journey();
+        Journey journey = Journey();
 
         JourneyLeg leg1 = JourneyLeg(LegType::CONN);
         JourneyLeg leg2 = JourneyLeg(LegType::PATH);
@@ -32,26 +32,12 @@ class ExampleAlgorithm : public AlgorithmEAT, public AlgorithmBiC {
         leg3.parts.push_back(2);
         leg3.parts.push_back(3);
 
-        result->legs.push_back(leg1);
-        result->legs.push_back(leg2);
-        result->legs.push_back(leg3);
-
-        return result;
-    }
-
-    vector<Journey> *query_bic(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-        cerr << "Running BiC query from " << from_stop_id << " to " << to_stop_id << " at time " << departure_time << endl;
-        // TODO: Implement BiC query here!
+        journey.legs.push_back(leg1);
+        journey.legs.push_back(leg2);
+        journey.legs.push_back(leg3);
 
         vector<Journey> *result = new vector<Journey>();
-
-        Journey journey1 = Journey();
-        JourneyLeg leg1 = JourneyLeg(LegType::CONN);
-        leg1.parts.push_back(4);
-        journey1.legs.push_back(leg1);
-        result->push_back(journey1);
-        result->push_back(*query_eat(from_stop_id, to_stop_id, departure_time));
-
+        result->push_back(journey);
         return result;
     }
 };

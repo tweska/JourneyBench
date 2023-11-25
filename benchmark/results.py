@@ -1,13 +1,19 @@
+from collections import defaultdict
 from gzip import open
+from typing import Dict, List
 
-from .benchmark_core import LegType, JourneyLeg, Journey, QueryResult, QueryType, PreprocessingResult
+from .benchmark_core import LegType, JourneyLeg, Journey, QueryResult, PreprocessingResult
 
-from .results_pb2 import PBResults, PBLegType, PBQueryType
+from .results_pb2 import PBResults, PBLegType
 
 
 class Results:
-    preprocessing_results = []
-    query_results = []
+    preprocessing_results: List[PreprocessingResult]
+    query_results: Dict[int, List[QueryResult]]
+
+    def __init__(self):
+        self.preprocessing_results = []
+        self.query_results = defaultdict(list)
 
     def read(self, filepath: str) -> None:
         pb_results: PBResults = PBResults()
@@ -18,23 +24,21 @@ class Results:
             self.preprocessing_results.append(pb_preprocessing_result.runtime_ns)
 
         for pb_query_result in pb_results.queries:
-            if pb_query_result.type == PBQueryType.EAT:
-                type = QueryType.EAT
-            else:
-                assert(pb_query_result.type == PBQueryType.BIC)
-                type = QueryType.BIC
-            self.query_results.append((pb_query_result.query_id, QueryResult(pb_query_result.runtime_ns, type)))
+            query_result = QueryResult(pb_query_result.runtime_ns)
             for pb_journey in pb_query_result.journeys:
-                self.query_results[-1][1].journeys.append(Journey())
+                journey = Journey()
                 for pb_leg in pb_journey.legs:
                     if pb_leg.type == PBLegType.CONN:
                         type = LegType.CONN
                     else:
                         assert(pb_leg.type == PBLegType.PATH)
                         type = LegType.PATH
-                    self.query_results[-1][1].journeys[-1].legs.append(JourneyLeg(type))
+                    leg = JourneyLeg(type)
                     for part in pb_leg.parts:
-                        self.query_results[-1][1].journeys[-1].legs[-1].parts.append(part)
+                        leg.add_part(part)
+                    journey.add_leg(leg)
+                query_result.add_journey(journey)
+            self.add_query_result(pb_query_result.query_id, query_result)
 
     def write(self, filepath: str) -> None:
         pb_results: PBResults = PBResults()
@@ -43,27 +47,23 @@ class Results:
             pb_preprocessing_result = pb_results.preprocessing.add()
             pb_preprocessing_result.runtime_ns = preprocessing_result.runtime_ns
 
-        for query_result in self.query_results:
-            pb_query_result = pb_results.queries.add()
-            pb_query_result.query_id = query_result[0]
-            pb_query_result.runtime_ns = query_result[1].runtime_ns
-            if query_result[1].type == QueryType.EAT:
-                pb_query_result.type = PBQueryType.EAT
-            else:
-                assert(query_result[1].type == QueryType.BIC)
-                pb_query_result.type = PBQueryType.BIC
+        for query_id, query_results in self.query_results.items():
+            for query_result in query_results:
+                pb_query_result = pb_results.queries.add()
+                pb_query_result.query_id = query_id
+                pb_query_result.runtime_ns = query_result.runtime_ns
 
-            for journey in query_result[1].journeys:
-                pb_journey = pb_query_result.journeys.add()
-                for leg in journey.legs:
-                    pb_leg = pb_journey.legs.add()
-                    if leg.type == LegType.CONN:
-                        pb_leg.type = PBLegType.CONN
-                    else:
-                        assert(leg.type == LegType.PATH)
-                        pb_leg.type = PBLegType.PATH
-                    for part in leg.parts:
-                        pb_leg.parts.append(part)
+                for journey in query_result.journeys:
+                    pb_journey = pb_query_result.journeys.add()
+                    for leg in journey.legs:
+                        pb_leg = pb_journey.legs.add()
+                        if leg.type == LegType.CONN:
+                            pb_leg.type = PBLegType.CONN
+                        else:
+                            assert(leg.type == LegType.PATH)
+                            pb_leg.type = PBLegType.PATH
+                        for part in leg.parts:
+                            pb_leg.parts.append(part)
 
         with open(filepath, 'wb') as file:
             file.write(pb_results.SerializeToString())
@@ -72,4 +72,4 @@ class Results:
         self.preprocessing_results.append(preprocessing_result)
 
     def add_query_result(self, query_id: int, query_result: QueryResult):
-        self.query_results.append((query_id, query_result))
+        self.query_results[query_id].append(query_result)

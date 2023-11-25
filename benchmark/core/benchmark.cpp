@@ -1,8 +1,9 @@
 #include <dlfcn.h>
 
 #include <chrono>
+#include <iostream>
 
-#include "algobase.h"
+#include "algorithm.h"
 #include "network.h"
 #include "types.h"
 
@@ -22,14 +23,16 @@ int Benchmark::set_algorithm(char *filepath) {
 
     /* Create an instance of the AlgorithmBase class implementation. */
     algorithm = create();
-    algorithm_eat = dynamic_cast<AlgorithmEAT*>(algorithm);
-    algorithm_bic = dynamic_cast<AlgorithmBiC*>(algorithm);
+    return 0;
+}
 
-    return (algorithm_eat == nullptr && algorithm_bic == nullptr);
+int Benchmark::set_network(Network *network) {
+    this->network = network;
+    return 0;
 }
 
 PreprocessingResult *Benchmark::run_preprocessing() {
-    if (network == nullptr || algorithm == nullptr || (algorithm_eat == nullptr && algorithm_bic == nullptr)) { return nullptr; }
+    if (algorithm == nullptr || network == nullptr) { return nullptr; }
 
     auto start = chrono::steady_clock::now();
     /* Call the algorithm's initialization method. */
@@ -41,34 +44,17 @@ PreprocessingResult *Benchmark::run_preprocessing() {
     return new PreprocessingResult(runtime_ns);
 }
 
-QueryResult *Benchmark::run_single_eat_query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-    if (network == nullptr || algorithm_eat == nullptr) { return nullptr; }
+QueryResult *Benchmark::run_query(u32 from_node_id, u32 to_node_id, u32 departure_time) {
+    if (algorithm == nullptr || network == nullptr) { return nullptr; }
 
     auto start = chrono::steady_clock::now();
     /* Call the algorithm's query method. */
-    Journey *journey = algorithm_eat->query_eat(from_stop_id, to_stop_id, departure_time);
+    vector<Journey> *journeys = algorithm->query(from_node_id, to_node_id, departure_time);
     auto end = chrono::steady_clock::now();
     auto runtime_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
 
-    auto result = new QueryResult(runtime_ns, QueryType::EAT);
-    result->journeys.push_back(*journey);
-    delete journey;
-    return result;
-}
-
-QueryResult *Benchmark::run_single_bic_query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-    if (network == nullptr || algorithm_bic == nullptr) { return nullptr; }
-
-    auto start = chrono::steady_clock::now();
-    /* Call the algorithm's query method. */
-    vector<Journey> *journeys = algorithm_bic->query_bic(from_stop_id, to_stop_id, departure_time);
-    auto end = chrono::steady_clock::now();
-    auto runtime_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end-start).count();
-
-    auto result = new QueryResult(runtime_ns, QueryType::BIC);
-    for (const Journey& journey : *journeys) {
-        result->journeys.push_back(journey);
-    }
+    auto result = new QueryResult(runtime_ns);
+    result->journeys = *journeys;
     delete journeys;
     return result;
 }
