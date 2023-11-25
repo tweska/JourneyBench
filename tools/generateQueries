@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+
+import argparse
+import random
+
+from osm import haversine
+
+from benchmark import Network, Queries
+
+
+def stop_pairs(network: Network, min_dist: float, max_dist: float):
+    stops = [(i, n.latitude, n.longitude) for i, n in enumerate(network.nodes) if n.stop]
+    while True:
+        a, b = random.choices(stops, k=2)
+        if min_dist <= haversine(*a[1:], *b[1:]) <= max_dist:
+            yield a[0], b[0]
+
+
+def generate_queries(network: Network, n: int, min_dist: float, max_dist: float, max_departure_time: int):
+    queries = Queries()
+    pairs = stop_pairs(network, min_dist, max_dist)
+
+    for _ in range(n):
+        from_stop_id, to_stop_id = next(pairs)
+        departure_time = random.randint(0, max_departure_time)
+        queries.add_query(from_stop_id, to_stop_id, departure_time)
+
+    return queries
+
+
+def main():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('network')
+    argparser.add_argument('number', type=int)
+    argparser.add_argument('min_distance', type=float)
+    argparser.add_argument('max_distance', type=float)
+    argparser.add_argument('max_departure_time', type=int)
+    argparser.add_argument('output')
+    args = argparser.parse_args()
+
+    network = Network()
+    network.read(args.network)
+    print(network)
+
+    queries = generate_queries(network, args.number, args.min_distance, args.max_distance, args.max_departure_time)
+    print(queries)
+    queries.write(args.output)
+
+
+if __name__ == '__main__':
+    main()

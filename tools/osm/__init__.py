@@ -1,1 +1,1 @@
-from .osm import combine
+from .osm import combine, haversine
