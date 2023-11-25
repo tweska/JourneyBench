@@ -8,8 +8,17 @@
 //#include "results.h"
 #include "types.h"
 
-#include "network_functions.h"
-#include "query_functions.h"
+struct {
+    bool operator()(Conn a, Conn b) const {
+        return a.departure_time < b.departure_time;
+    }
+} connLess;
+
+struct {
+    bool operator()(Path a, Path b) const {
+        return a.node_a_id < b.node_a_id or (a.node_a_id == b.node_a_id and a.node_b_id < b.node_b_id);
+    }
+} pathLess;
 
 namespace py = pybind11;
 
@@ -59,34 +68,23 @@ PYBIND11_MODULE(benchmark_core, m) {
             .def_readonly("conns", &Network::conns)
             .def_readonly("paths", &Network::paths)
             .def_readonly("trips", &Network::trips)
-            .def("add_node", [](Network &network,
-                                f64 latitude, f64 longitude,
-                                bool stop) {
-                return add_node(network,
-                                latitude, longitude,
-                                stop);
+            .def("add_node", [](Network &network, f64 latitude, f64 longitude, bool stop) {
+                network.nodes.push_back({latitude, longitude, stop});
+                return network.nodes.size() - 1;
             })
             .def("add_trip", [](Network &network) {
-                return add_trip(network);
+                network.trips.push_back({});
+                return network.trips.size() - 1;
             })
-            .def("add_conn", [](Network &network,
-                                u32 trip_id,
-                                u32 from_node_id, u32 to_node_id,
-                                u32 departure_time, u32 arrival_time) {
-                return add_conn(network,
-                                trip_id,
-                                from_node_id, to_node_id,
-                                departure_time, arrival_time);
+            .def("add_conn", [](Network &network, u32 trip_id, u32 from_node_id, u32 to_node_id, u32 departure_time, u32 arrival_time) {
+                network.conns.push_back({trip_id, from_node_id, to_node_id, departure_time, arrival_time});
             })
-            .def("add_path", [](Network &network,
-                                u32 node_a_id, u32 node_b_id,
-                                u32 duration) {
-                return add_path(network,
-                                node_a_id, node_b_id,
-                                duration);
+            .def("add_path", [](Network &network, u32 node_a_id, u32 node_b_id, u32 duration) {
+                network.paths.push_back({node_a_id, node_b_id, duration});
             })
             .def("sort", [](Network &network) {
-                return sort_network(network);
+                std::sort(network.conns.begin(), network.conns.end(), connLess);
+                std::sort(network.paths.begin(), network.paths.end(), pathLess);
             });
 
     py::class_<Query>(m, "Query")
@@ -98,12 +96,9 @@ PYBIND11_MODULE(benchmark_core, m) {
     py::class_<Queries>(m, "Queries")
             .def(py::init<>())
             .def_readonly("queries", &Queries::queries)
-            .def("add_query", [](Queries &queries,
-                                 u32 from_node_id, u32 to_node_id,
-                                 u32 departure_time) {
-                return add_query(queries,
-                                 from_node_id, to_node_id,
-                                 departure_time);
+            .def("add_query", [](Queries &queries, u32 from_node_id, u32 to_node_id, u32 departure_time) {
+                queries.queries.push_back({from_node_id, to_node_id, departure_time});
+                return queries.queries.size() - 1;
             });
 
 //    py::enum_<LegType>(m, "LegType")
