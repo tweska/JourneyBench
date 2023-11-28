@@ -17,6 +17,7 @@ namespace CSA {
     };
 
     struct Path {
+        uint32_t dep_stop;
         uint32_t arr_stop;
         uint32_t dur;
     };
@@ -37,7 +38,7 @@ namespace CSA {
         Stop *stops;
     };
 
-    Data *read_data(Network *network);
+    Data *read_data(JourneyBench::Network *network);
 
 }
 
