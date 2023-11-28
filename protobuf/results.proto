@@ -2,18 +2,18 @@ syntax = "proto3";
 
 package results;
 
-enum PBLegType {
+enum PBJourneyPartType {
   CONN = 0;
   PATH = 1;
 }
 
-message PBJourneyLeg {
-  PBLegType type = 1;
-  repeated uint32 parts = 2;
+message PBJourneyPart {
+  PBJourneyPartType type = 1;
+  uint32 id = 2;
 }
 
 message PBJourney {
-  repeated PBJourneyLeg legs = 1;
+  repeated PBJourneyPart parts = 1;
 }
 
 message PBQueryResult {

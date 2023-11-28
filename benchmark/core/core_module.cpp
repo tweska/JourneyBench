@@ -31,9 +31,8 @@ PYBIND11_MAKE_OPAQUE(std::vector<std::vector<Conn*>>);
 
 PYBIND11_MAKE_OPAQUE(std::vector<Query>);
 
-PYBIND11_MAKE_OPAQUE(std::vector<QueryResult>);
 PYBIND11_MAKE_OPAQUE(std::vector<Journey>);
-PYBIND11_MAKE_OPAQUE(std::vector<JourneyLeg>);
+PYBIND11_MAKE_OPAQUE(std::vector<JourneyPart>);
 PYBIND11_MAKE_OPAQUE(std::vector<u32>);
 
 PYBIND11_MODULE(benchmark_core, m) {
@@ -99,24 +98,21 @@ PYBIND11_MODULE(benchmark_core, m) {
                 return queries.queries.size() - 1;
             });
 
-    py::enum_<LegType>(m, "LegType")
-            .value("CONN", LegType::CONN)
-            .value("PATH", LegType::PATH)
+    py::enum_<JourneyPartType>(m, "JourneyPartType")
+            .value("CONN", JourneyPartType::CONN)
+            .value("PATH", JourneyPartType::PATH)
             .export_values();
 
-    py::class_<JourneyLeg>(m, "JourneyLeg")
-            .def(py::init<LegType>())
-            .def_readonly("type", &JourneyLeg::type)
-            .def_readonly("parts", &JourneyLeg::parts)
-            .def("add_part", [](JourneyLeg &leg, u32 part) {
-                leg.parts.push_back(part);
-            });
+    py::class_<JourneyPart>(m, "JourneyPart")
+            .def(py::init<JourneyPartType, u32>())
+            .def_readonly("type", &JourneyPart::type)
+            .def_readonly("id", &JourneyPart::id);
 
     py::class_<Journey>(m, "Journey")
             .def(py::init<>())
-            .def_readonly("legs", &Journey::legs)
-            .def("add_leg", [](Journey &journey, JourneyLeg &leg) {
-                journey.legs.push_back(leg);
+            .def_readonly("parts", &Journey::parts)
+            .def("add_part", [](Journey &journey, JourneyPartType type, u32 id) {
+                journey.parts.push_back(JourneyPart(type, id));
             });
 
     py::class_<QueryResult>(m, "QueryResult")
@@ -137,8 +133,6 @@ PYBIND11_MODULE(benchmark_core, m) {
 
     py::bind_vector<std::vector<Query>>(m, "VectorQuery");
 
-    py::bind_vector<std::vector<QueryResult>>(m, "VectorQueryResult");
     py::bind_vector<std::vector<Journey>>(m, "VectorJourney");
-    py::bind_vector<std::vector<JourneyLeg>>(m, "VectorJourneyLeg");
-    py::bind_vector<std::vector<u32>>(m, "Vector_u32");
+    py::bind_vector<std::vector<JourneyPart>>(m, "VectorJourneyPart");
 }

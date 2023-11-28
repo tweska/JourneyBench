@@ -2,9 +2,9 @@ from collections import defaultdict
 from gzip import open
 from typing import Dict, List
 
-from .benchmark_core import LegType, JourneyLeg, Journey, QueryResult, PreprocessingResult
+from .benchmark_core import JourneyPartType, JourneyPart, Journey, QueryResult, PreprocessingResult
 
-from .results_pb2 import PBResults, PBLegType
+from .results_pb2 import PBResults, PBJourneyPartType
 
 
 class Results:
@@ -27,16 +27,13 @@ class Results:
             query_result = QueryResult(pb_query_result.runtime_ns)
             for pb_journey in pb_query_result.journeys:
                 journey = Journey()
-                for pb_leg in pb_journey.legs:
-                    if pb_leg.type == PBLegType.CONN:
-                        type = LegType.CONN
+                for pb_part in pb_journey.parts:
+                    if pb_part.type == PBJourneyPartType.CONN:
+                        type = JourneyPartType.CONN
                     else:
-                        assert(pb_leg.type == PBLegType.PATH)
-                        type = LegType.PATH
-                    leg = JourneyLeg(type)
-                    for part in pb_leg.parts:
-                        leg.add_part(part)
-                    journey.add_leg(leg)
+                        assert(pb_part.type == PBJourneyPartType.PATH)
+                        type = JourneyPartType.PATH
+                    journey.add_part(type, pb_part.id)
                 query_result.add_journey(journey)
             self.add_query_result(pb_query_result.query_id, query_result)
 
@@ -55,15 +52,13 @@ class Results:
 
                 for journey in query_result.journeys:
                     pb_journey = pb_query_result.journeys.add()
-                    for leg in journey.legs:
-                        pb_leg = pb_journey.legs.add()
-                        if leg.type == LegType.CONN:
-                            pb_leg.type = PBLegType.CONN
+                    for part in journey.parts:
+                        pb_part = pb_journey.parts.add()
+                        if part.type == JourneyPartType.CONN:
+                            pb_part.type = PBJourneyPartType.CONN
                         else:
-                            assert(leg.type == LegType.PATH)
-                            pb_leg.type = PBLegType.PATH
-                        for part in leg.parts:
-                            pb_leg.parts.append(part)
+                            assert(part.type == JourneyPartType.PATH)
+                            pb_part.type = PBJourneyPartType.PATH
 
         with open(filepath, 'wb') as file:
             file.write(pb_results.SerializeToString())

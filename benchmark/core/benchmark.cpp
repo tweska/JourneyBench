@@ -56,8 +56,8 @@ namespace JourneyBench {
         auto end = chrono::steady_clock::now();
         auto runtime_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
 
-        auto result = new QueryResult(runtime_ns);
-        result->journeys = *journeys;
+        if (journeys == nullptr) { return nullptr; }
+        auto result = new QueryResult(runtime_ns, *journeys);
         delete journeys;
         return result;
     }
