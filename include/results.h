@@ -7,35 +7,44 @@
 
 using namespace std;
 
-enum LegType { CONN, PATH };
+namespace JourneyBench {
 
-struct JourneyLeg {
-    LegType type;
-    vector<u32> parts;
+    enum LegType {
+        CONN, PATH
+    };
 
-    JourneyLeg(LegType type) : type(type) {}
-    JourneyLeg(LegType type, vector<u32> parts) : type(type), parts(parts) {}
-};
+    struct JourneyLeg {
+        LegType type;
+        vector <u32> parts;
 
-struct Journey {
-    vector<JourneyLeg> legs;
-};
+        JourneyLeg(LegType type) : type(type) {}
 
-enum QueryType { EAT, BIC };
+        JourneyLeg(LegType type, vector <u32> parts) : type(type), parts(parts) {}
+    };
 
-struct QueryResult {
-    u64 runtime_ns;
-    vector<Journey> journeys;
+    struct Journey {
+        vector <JourneyLeg> legs;
+    };
 
-    QueryResult(u64 runtime_ns)
-        : runtime_ns(runtime_ns) {}
-};
+    enum QueryType {
+        EAT, BIC
+    };
 
-struct PreprocessingResult {
-    u64 runtime_ns;
+    struct QueryResult {
+        u64 runtime_ns;
+        vector <Journey> journeys;
 
-    PreprocessingResult(u64 runtime_ns)
-        : runtime_ns(runtime_ns) {}
-};
+        QueryResult(u64 runtime_ns)
+                : runtime_ns(runtime_ns) {}
+    };
+
+    struct PreprocessingResult {
+        u64 runtime_ns;
+
+        PreprocessingResult(u64 runtime_ns)
+                : runtime_ns(runtime_ns) {}
+    };
+
+}
 
 #endif

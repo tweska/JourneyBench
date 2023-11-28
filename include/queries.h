@@ -7,14 +7,18 @@
 
 using namespace std;
 
-struct Query {
-    u32 from_node_id;
-    u32 to_node_id;
-    u32 departure_time;
-};
+namespace JourneyBench {
 
-struct Queries {
-    vector<Query> queries;
-};
+    struct Query {
+        u32 from_node_id;
+        u32 to_node_id;
+        u32 departure_time;
+    };
+
+    struct Queries {
+        vector <Query> queries;
+    };
+
+}
 
 #endif

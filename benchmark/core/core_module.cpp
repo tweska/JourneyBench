@@ -5,8 +5,10 @@
 #include "benchmark.h"
 #include "network.h"
 #include "queries.h"
-//#include "results.h"
+#include "results.h"
 #include "types.h"
+
+using namespace JourneyBench;
 
 struct {
     bool operator()(Conn a, Conn b) const {

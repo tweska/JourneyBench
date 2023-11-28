@@ -7,32 +7,35 @@
 
 using namespace std;
 
-struct Node {
-    f64 latitude;
-    f64 longitude;
-    bool stop;
-};
+namespace JourneyBench {
 
-struct Conn {
-    u32 trip_id;
-    u32 from_node_id;
-    u32 to_node_id;
-    u32 departure_time;
-    u32 arrival_time;
-};
+    struct Node {
+        f64 latitude;
+        f64 longitude;
+        bool stop;
+    };
 
-struct Path {
-    u32 node_a_id;
-    u32 node_b_id;
-    u32 duration;
-};
+    struct Conn {
+        u32 trip_id;
+        u32 from_node_id;
+        u32 to_node_id;
+        u32 departure_time;
+        u32 arrival_time;
+    };
 
-struct Network {
-    vector<Node> nodes;
-    vector<Conn> conns;
-    vector<Path> paths;
+    struct Path {
+        u32 node_a_id;
+        u32 node_b_id;
+        u32 duration;
+    };
 
-    vector<vector<Conn*>> trips;
-};
+    struct Network {
+        vector <Node> nodes;
+        vector <Conn> conns;
+        vector <Path> paths;
+
+        vector <vector<Conn *>> trips;
+    };
+}
 
 #endif
