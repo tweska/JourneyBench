@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 
-import argparse
-from datetime import date, datetime, time, timedelta
-from os.path import getsize
-from typing import Optional, Tuple
+import pathlib
+
+from datetime import datetime, time, timedelta
+from typing import List
 
 from benchmark import Network
-from gtfs import GTFS, read
+from gtfs import GTFS
 from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
-from osm import combine
 
+def gtfs2network(
+        gtfs_paths: List[pathlib.Path],
+        start: datetime = None, end: datetime = None, days: int = 1,
+        include_pathways: bool = False,  # TODO
+) -> Network:
+    gtfs: GTFS = GTFS.read(gtfs_paths)
 
-def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
-    start_date = start_date if start_date else find_busiest_date(gtfs)
-    end_date = start_date + timedelta(days=days-1)
+    start = start if start else datetime.combine(find_busiest_date(gtfs), time.min)
+    end = end if end else start + (timedelta(days=days) - timedelta(seconds=1))
 
-    start_datetime = datetime.combine(start_date, time.min)
-    end_datetime = datetime.combine(end_date, time.max)
-    network = Network(int((end_datetime - start_datetime).total_seconds()))
+    network: Network = Network(int((end - start).total_seconds()))
 
     # Register stops
     for gtfs_stop in gtfs.stops:
@@ -27,14 +29,14 @@ def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
     date_trip_dict = generate_date_trip_dict(gtfs)
     trip_stop_time_dict = generate_trip_stop_time_dict(gtfs)
 
-    cur_date = start_date - timedelta(days=1)  # include previous day in initial search
+    cur_date = (start - timedelta(days=1)).date()  # include previous day in initial search
     trip_id = 0
-    while cur_date <= end_date:
+    while cur_date <= end.date():
         for trip in date_trip_dict[cur_date]:
             stop_times = [gtfs.stop_times[index] for index in trip_stop_time_dict[trip]]
             stops = [st.stop_id for st in stop_times]
-            arrivals = [int(((datetime.combine(cur_date, time.min) + st.arrival_time) - start_datetime).total_seconds()) for st in stop_times]
-            departures = [int(((datetime.combine(cur_date, time.min) + st.departure_time) - start_datetime).total_seconds()) for st in stop_times]
+            arrivals = [int(((datetime.combine(cur_date, time.min) + st.arrival_time) - start).total_seconds()) for st in stop_times]
+            departures = [int(((datetime.combine(cur_date, time.min) + st.departure_time) - start).total_seconds()) for st in stop_times]
             for i in range(len(stops)-1):
                 network.add_conn(
                     trip_id,
@@ -49,76 +51,27 @@ def gtfs2network(gtfs: GTFS, start_date: Optional[date], days: int) -> Network:
     return network
 
 
-def add_footpaths(gtfs: GTFS, network: Network, speed=4.5, verbose=False) -> Tuple[int, int]:
-    speed = speed * 1000 / 3600
-    stops = [(gtfs_stop.stop_id, gtfs_stop.stop_lat, gtfs_stop.stop_lon) for gtfs_stop in gtfs.stops]
-    G = combine(stops, verbose=verbose)
-    for node_id, data in G.nodes(data=True):
-        if 'keep' in data and data['keep']:
-            continue
-        network.add_node(node_id, data['lat'], data['lon'])
-    for node_a, node_b, dist in G.edges(data='distance'):
-        network.add_path(node_a, node_b, int(dist / speed))
-    return G.number_of_nodes(), G.number_of_edges()
-
-
-def main():
-    argparser = argparse.ArgumentParser(
-        prog='parseGTFS',
-        description='Parse a network from a timetable source.',
-    )
-    argparser.add_argument('-o', '--output', required=True,
-                           help='output network (.network) file')
-    argparser.add_argument('-i', '--input', required=True,
-                           help='input GTFS (.zip) file')
-    argparser.add_argument('-d', '--date', required=False,
-                           type=lambda s: datetime.strptime(s, '%Y-%m-%d').date(),
-                           help='first date of the transit timetable')
-    argparser.add_argument('-c', '--count', type=int, default=1,
-                           help='number of days in the transit timetable')
-    argparser.add_argument('-p', '--paths', action='store_true',
-                           help='generate footpath graph from OSM data')
-    argparser.add_argument('-v', '--verbose', action='store_true',
-                           help='print helpful messages')
-    args = argparser.parse_args()
-
-    gtfs: GTFS = read(args.input)
-    if args.verbose:
-        print(f"stats for GTFS file '{args.input}':")
-        print(f"    stops:       {len(gtfs.stops):>8}")
-        print(f"    services:    {len(gtfs.services):>8}")
-        print(f"      changes:   {len(gtfs.service_changes):>8}")
-        print(f"    trips:       {len(gtfs.trips):>8}")
-        print(f"    stop times:  {len(gtfs.stop_times):>8}")
-
-    network: Network = gtfs2network(gtfs, args.date, args.count)
-    if args.paths and args.verbose:
-        print(f"\nextracted from GTFS file '{args.input}':")
-        print(f"    end:        {network.end:>8}")
-        print(f"    nodes:      {len(network.nodes):>8}")
-        print(f"    trips:      {len(network.trips):>8}")
-        print(f"    conns:      {len(network.conns):>8}")
-
-    if args.paths:
-        if args.verbose:
-            print(f"\nObtaining footpaths, this may take a while...")
-        n, p = add_footpaths(gtfs, network, verbose=args.verbose)
-        if args.verbose:
-            print(f"\nextracted from OpenStreetMaps:")
-            print(f"    nodes:      {n:>8}")
-            print(f"    paths:      {p:>8}")
-
-    print(f"\nstats for network file '{args.output}'")
-    print(f"    end:        {network.end:>8}")
-    print(f"    nodes:      {len(network.nodes):>8}")
-    print(f"    trips:      {len(network.trips):>8}")
-    print(f"    conns:      {len(network.conns):>8}")
-    print(f"    paths:      {len(network.paths):>8}")
-
-    network.write(args.output)
-    if args.verbose:
-        print(f"    size:       {getsize(args.output)/1024:>10.1f} KiB")
-
-
 if __name__ == '__main__':
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog='parseGTFS',
+        description='Parse a network from a GTFS file.',
+    )
+    parser.add_argument('input', type=pathlib.Path, nargs='+', help='input GTFS file(s)')
+    parser.add_argument('output', type=pathlib.Path, help='output Network file')
+    parser.add_argument('--date', type=lambda s: datetime.strptime(s, '%Y-%m-%d').date(), required=False,
+                        help='first date to parse (ISO 8601 date)')
+    parser.add_argument('--days', type=int, default=2, required=False,
+                        help='number of days to parse from the first date')
+    parser.add_argument('--poly', type=pathlib.Path, required=False,
+                        help='exclude data outside given polygon (Osmosis .poly file)')
+    parser.add_argument('--paths', action='store_true', help='include paths from pathways.txt')
+    args = parser.parse_args()
+
+    gtfs2network(
+        gtfs_paths=args.input,
+        start=datetime.combine(args.date, time.min) if args.date else None,
+        days=args.days,
+        include_pathways=args.paths,
+    ).write(args.output)

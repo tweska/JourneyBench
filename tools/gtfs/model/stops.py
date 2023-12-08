@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, Dict
 
-from .common import RecordBase, get_id
+from .common import RecordBase, RecordExistsException, get_id
 
 
 @dataclass(eq=False)
@@ -13,6 +12,8 @@ class Stop(RecordBase):
 
     def __init__(self, values: Dict[str, str], context: Dict[str, Any]):
         stop_id_map = context.setdefault('stop_id_map', {})
+        if values['stop_id'] in stop_id_map:
+            raise RecordExistsException()
         self.stop_id = get_id(stop_id_map, values['stop_id'])
         self.stop_lat = float(values['stop_lat'])
         self.stop_lon = float(values['stop_lon'])

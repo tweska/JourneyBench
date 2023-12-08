@@ -1,3 +1,5 @@
+import pathlib
+
 from gzip import open
 from typing import Any, Dict, Optional
 
@@ -43,7 +45,7 @@ class Network(CoreNetwork):
             self.add_path(pb_path.node_a_id, pb_path.node_b_id,
                           pb_path.duration)
 
-    def write(self, filepath: str) -> None:
+    def write(self, filepath: pathlib.Path) -> None:
         self.sort()
 
         pb_network: PBNetwork = PBNetwork()

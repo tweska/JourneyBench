@@ -8,6 +8,11 @@ T = TypeVar('T', bound='RecordBase')
 DATE_FORMAT = '%Y%m%d'
 
 
+class RecordExistsException(Exception):
+    """Raised when a record already exists."""
+    pass
+
+
 @dataclass(eq=False)
 class RecordBase(ABC):
     @abstractmethod
