@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, TypeVar
 from zipfile import ZipFile
 
-from .model import Service, ServiceChange, Stop, StopTime, Trip
+from .model import Pathway, Service, ServiceChange, Stop, StopTime, Trip
 from .model.common import RecordBase, RecordExistsException
 
 
@@ -36,6 +36,11 @@ GTFS_DATASET_MAPPINGS: List[Dict[str, Any]] = [
         'fieldname': 'stop_times',
         'class': StopTime
     },
+    {
+        'filename': 'pathways.txt',
+        'fieldname': 'pathways',
+        'class': Pathway
+    }
 ]
 
 Self = TypeVar("Self", bound="GTFS")
@@ -48,6 +53,7 @@ class GTFS:
 
     services: List[Service] = field(default_factory=list)
     service_changes: List[ServiceChange] = field(default_factory=list)
+    pathways: List[Pathway] = field(default_factory=list)
 
     def __repr__(self) -> str:
         return f'GTFS(stops: {len(self.stops)}, trips: {len(self.trips)}, stop_times: {len(self.stop_times)})'

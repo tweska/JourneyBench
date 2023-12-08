@@ -129,7 +129,7 @@ class Network(CoreNetwork):
             raise Exception(f"Node A with ID '{ext_node_a_id}' is not registered!")
         if ext_node_b_id not in self.__node_id_map:
             raise Exception(f"Node B with ID '{ext_node_b_id}' is not registered!")
-        if duration < 0:
+        if duration is None or duration < 0:
             raise Exception("Path with negative duration cannot be registered!")
 
         node_a_id = self.__node_id_map[ext_node_a_id]

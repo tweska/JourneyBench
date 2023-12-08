@@ -8,11 +8,13 @@ from typing import List
 from benchmark import Network
 from gtfs import GTFS
 from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
+from osm import haversine
 
 def gtfs2network(
         gtfs_paths: List[pathlib.Path],
-        start: datetime = None, end: datetime = None, days: int = 1,
-        include_pathways: bool = False,  # TODO
+        start: datetime = None, end: datetime = None, days: int = 2,
+        include_pathways: bool = False,
+        speed_ms: float = 1.25  # 4.5 km/h
 ) -> Network:
     gtfs: GTFS = GTFS.read(gtfs_paths)
 
@@ -48,6 +50,16 @@ def gtfs2network(
             trip_id += 1
         cur_date += timedelta(days=1)
 
+    if include_pathways:
+        for gtfs_pathway in gtfs.pathways:
+            if gtfs_pathway.traversal_time is None:
+                if gtfs_pathway.length is None:
+                    from_stop = gtfs.stops[gtfs_pathway.from_stop_id]
+                    to_stop = gtfs.stops[gtfs_pathway.to_stop_id]
+                    gtfs_pathway.length = haversine(from_stop.stop_lat, from_stop.stop_lon, to_stop.stop_lat, to_stop.stop_lon)
+                gtfs_pathway.traversal_time = int(round(gtfs_pathway.length / speed_ms))
+            network.add_path(gtfs_pathway.from_stop_id, gtfs_pathway.to_stop_id, gtfs_pathway.traversal_time)
+
     return network
 
 
@@ -67,6 +79,7 @@ if __name__ == '__main__':
     parser.add_argument('--poly', type=pathlib.Path, required=False,
                         help='exclude data outside given polygon (Osmosis .poly file)')
     parser.add_argument('--paths', action='store_true', help='include paths from pathways.txt')
+    parser.add_argument('--speed', type=float, default=4.5, required=False, help='walking speed in km/h')
     args = parser.parse_args()
 
     gtfs2network(
@@ -74,4 +87,5 @@ if __name__ == '__main__':
         start=datetime.combine(args.date, time.min) if args.date else None,
         days=args.days,
         include_pathways=args.paths,
+        speed_ms=args.speed * 1000 / 3600
     ).write(args.output)
