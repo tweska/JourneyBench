@@ -65,6 +65,8 @@ def gtfs2network(
 
 if __name__ == '__main__':
     import argparse
+    from geo.poly import parse_poly
+    from geo.util import trim_network
 
     parser = argparse.ArgumentParser(
         prog='parseGTFS',
@@ -82,10 +84,16 @@ if __name__ == '__main__':
     parser.add_argument('--speed', type=float, default=4.5, required=False, help='walking speed in km/h')
     args = parser.parse_args()
 
-    gtfs2network(
+    network = gtfs2network(
         gtfs_paths=args.input,
         start=datetime.combine(args.date, time.min) if args.date else None,
         days=args.days,
         include_pathways=args.paths,
         speed_ms=args.speed * 1000 / 3600
-    ).write(args.output)
+    )
+
+    if args.poly:
+        with open(args.poly, 'r') as file:
+            poly = parse_poly(file.readlines(), hull=True)
+            network = trim_network(network, poly)
+    network.write(args.output)
