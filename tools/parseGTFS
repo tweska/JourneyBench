@@ -8,7 +8,8 @@ from typing import List
 from benchmark import Network
 from gtfs import GTFS
 from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
-from osm import haversine
+from geo.util import haversine
+
 
 def gtfs2network(
         gtfs_paths: List[pathlib.Path],
@@ -20,6 +21,8 @@ def gtfs2network(
 
     start = start if start else datetime.combine(find_busiest_date(gtfs), time.min)
     end = end if end else start + (timedelta(days=days) - timedelta(seconds=1))
+
+    print(start, end)
 
     network: Network = Network(int((end - start).total_seconds()))
 

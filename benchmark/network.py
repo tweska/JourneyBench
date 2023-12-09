@@ -1,10 +1,13 @@
 import pathlib
 
 from gzip import open
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TypeVar
 
 from .benchmark_core import Network as CoreNetwork
 from .network_pb2 import PBNetwork, PBNetworkNode, PBNetworkConn, PBNetworkPath
+
+
+Self = TypeVar("Self", bound="Network")
 
 
 class Network(CoreNetwork):
@@ -23,27 +26,32 @@ class Network(CoreNetwork):
         return (f"Network(stops: {sum([1 for n in self.nodes if n.stop])}, trips: {len(self.trips)}, "
                 f"conns: {len(self.conns)}, nodes: {len(self.nodes)}, paths: {len(self.paths)})")
 
-    def read(self, filepath: str) -> None:
+    @classmethod
+    def read(cls, filepath: pathlib.Path) -> Self:
+        network = Network()
+
         pb_network: PBNetwork = PBNetwork()
         with open(filepath, 'rb') as file:
             pb_network.ParseFromString(file.read())
 
-        [self.add_trip() for _ in range(pb_network.trip_count)]
-        self.end = pb_network.end_time
+        [network.add_trip() for _ in range(pb_network.trip_count)]
+        network.end = pb_network.end_time
 
         for node_id, pb_node in enumerate(pb_network.nodes):
-            self.add_node(node_id,
-                          pb_node.latitude, pb_node.longitude,
-                          pb_node.stop)
+            network.add_node(node_id,
+                             pb_node.latitude, pb_node.longitude,
+                             pb_node.stop)
 
         for pb_conn in pb_network.conns:
-            self.add_conn(pb_conn.trip_id,
-                          pb_conn.from_node_id, pb_conn.to_node_id,
-                          pb_conn.departure_time, pb_conn.arrival_time)
+            network.add_conn(pb_conn.trip_id,
+                             pb_conn.from_node_id, pb_conn.to_node_id,
+                             pb_conn.departure_time, pb_conn.arrival_time)
 
         for pb_path in pb_network.paths:
-            self.add_path(pb_path.node_a_id, pb_path.node_b_id,
-                          pb_path.duration)
+            network.add_path(pb_path.node_a_id, pb_path.node_b_id,
+                             pb_path.duration)
+
+        return network
 
     def write(self, filepath: pathlib.Path) -> None:
         self.sort()

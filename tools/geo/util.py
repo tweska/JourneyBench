@@ -1,9 +1,39 @@
 import math
-from typing import Tuple
+from typing import List, Tuple
 
-from shapely import Polygon, Point
+import numpy as np
 
-from benchmark import Network
+from scipy.spatial import ConvexHull
+from shapely.geometry import Polygon, Point
+
+
+# Mean radius of Earth in meters derived from the World Geodetic System (WGS 84).
+WSG84_R = 6371008.77142
+
+
+def haversine(
+        lat_a: float, lon_a: float,
+        lat_b: float, lon_b: float,
+        r: float = WSG84_R,
+) -> float:
+    """
+    Calculate the great-circle distance between two points on a sphere.
+
+    :param lat_a: latitude of first point (in degrees)
+    :param lon_a: longitude of first point (in degrees)
+    :param lat_b: latitude of second point (in degrees)
+    :param lon_b: longitude of second point (in degrees)
+    :param r: radius of the sphere, default is the mean radius of Earth (in meters)
+
+    :return: distance between first and second points (in meters)
+    """
+    ta = math.radians(lat_a)
+    la = math.radians(lon_a)
+    tb = math.radians(lat_b)
+    lb = math.radians(lon_b)
+    return 2 * r * math.asin(min(1, math.sqrt(
+        math.sin((tb - ta) / 2) ** 2 + math.cos(ta) * math.cos(tb) * math.sin((lb - la) / 2) ** 2
+    )))
 
 
 def latlon2AEQ(
@@ -35,7 +65,9 @@ def latlon2AEQ(
     return x, y
 
 
-def trim_network(input: Network, poly: Polygon) -> Network:
+def trim_network(input, poly: Polygon):
+    from benchmark import Network
+
     centroid = poly.centroid.y, poly.centroid.x
     points = [latlon2AEQ(*centroid, p[1], p[0]) for p in poly.exterior.coords]
     poly = Polygon(points)
@@ -60,3 +92,28 @@ def trim_network(input: Network, poly: Polygon) -> Network:
             output.add_path(path.node_a_id, path.node_b_id, path.duration)
 
     return output
+
+
+def extended_convex_hull(points: List[Tuple[float, float]], dist: float = 100, r: float = WSG84_R) -> Polygon:
+    """
+    Create a convex hull around a list of points, extend the hull by a given distance.
+    :param points: a list of points (lat, lon) to find the convex hull for
+    :param dist: how far to extend the convex hull (in meters)
+    :param r: radius of the sphere, default is the mean radius of Earth in meters as defined by the IUGG (Geodetic Reference System 1980)
+    :return: a polygon describing the (extended) convex hull
+    """
+    convex_points = np.array([points[i] for i in ConvexHull(points).vertices])
+    if dist == 0:
+        return Polygon([(p[1], p[0]) for p in convex_points])
+
+    norm_vectors = []
+    for i, v in enumerate(convex_points):
+        nu = v - convex_points[(i-1) % len(convex_points)]
+        nw = v - convex_points[(i+1) % len(convex_points)]
+        vector = (nu / np.linalg.norm(nu)) + (nw / np.linalg.norm(nw))
+        norm_vectors.append(vector / np.linalg.norm(vector))
+    norm_vectors = np.array(norm_vectors)
+
+    diff = [(math.fabs(math.degrees(dist / (r * math.sin(math.radians(p[1]))))),
+             math.fabs(math.degrees(dist / (r * math.cos(math.radians(p[0])))))) for p in convex_points]
+    return Polygon([(p[1], p[0]) for p in (convex_points + diff * norm_vectors)])

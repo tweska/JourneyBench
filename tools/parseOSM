@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+
+import pathlib
+from typing import Dict, Optional, Tuple
+
+import networkx as nx
+from shapely.geometry import Polygon
+
+from geo.util import extended_convex_hull
+
+
+def prep(network_path: pathlib.Path, poly_path: Optional[pathlib.Path] = None):
+    from benchmark import Network
+    from geo.poly import parse_poly
+
+    network = Network.read(network_path)
+    nodes = {i: (n.latitude, n.longitude) for i, n in enumerate(network.nodes)}
+
+    if poly_path:
+        with open(poly_path, 'r') as file:
+            poly = parse_poly(file.readlines(), hull=True)
+    else:
+        poly = extended_convex_hull(list(nodes.values()))
+
+    return network, nodes, poly
+
+
+def run(nodes: Dict[int, Tuple[float, float]], poly: Optional[Polygon]) -> nx.Graph:
+    from geo.osm import combine
+    return combine(nodes, poly)
+
+
+def finish(network, G, speed_ms):
+    for v, data in G.nodes(data=True):
+        if type(v) == int:
+            continue
+        network.add_node(v, data['lat'], data['lon'], stop=False)
+
+    for u, v, data in G.edges(data=True):
+        network.add_path(u, v, int(round(data['distance'] / speed_ms)))
+
+
+if __name__ == '__main__':
+    import argparse
+    import pickle
+
+    parser = argparse.ArgumentParser(
+        prog='parseOSM',
+        description='combine existing Network file with paths from OpenStreetMaps'
+    )
+    parser.add_argument('input', type=pathlib.Path, help='input Network file')
+    parser.add_argument('output', type=pathlib.Path, help='output Network file')
+    parser.add_argument('pickle', type=pathlib.Path, nargs='?', help='intermediate Python Pickle file')
+    parser.add_argument('--poly', type=pathlib.Path, required=False,
+                        help='exclude data outside given polygon (Osmosis .poly file)')
+    parser.add_argument('--stage', type=str, choices=['prep', 'run', 'finish'], required=False)
+    parser.add_argument('--speed', type=float, default=4.5, required=False, help='walking speed in km/h')
+    args = parser.parse_args()
+    if args.stage and not args.pickle:
+        parser.error('--stage requires pickle')
+    speed_ms = args.speed * 1000 / 3600
+
+    if args.stage == 'prep':
+        _, nodes, poly = prep(args.input, args.poly)
+        with open(args.pickle, 'wb') as file:
+            pickle.dump((nodes, [p for p in poly.exterior.coords]), file)
+    elif args.stage == 'run':
+        with open(args.pickle, 'rb') as file:
+            nodes, poly_points = pickle.load(file)
+        poly = Polygon(poly_points)
+        G = run(nodes, poly)
+        with open(args.pickle, 'wb') as file:
+            pickle.dump(G, file)
+    elif args.stage == 'finish':
+        from benchmark import Network
+        network = Network.read(args.input)
+        with open(args.pickle, 'rb') as file:
+            G = pickle.load(file)
+        finish(network, G, speed_ms)
+        network.write(args.output)
+    else:
+        network, nodes, poly = prep(args.input, args.poly)
+        G = run(nodes, poly)
+        finish(network, G, speed_ms)
+        network.write(args.output)

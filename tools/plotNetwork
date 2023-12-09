@@ -77,8 +77,7 @@ def main():
                            help='optional file two plot to')
     args = argparser.parse_args()
 
-    network = Network()
-    network.read(args.network)
+    network = Network.read(args.network)
     print(network)
     plot_network(network, args.output)
 
