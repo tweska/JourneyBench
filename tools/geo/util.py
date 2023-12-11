@@ -4,7 +4,7 @@ from typing import List, Tuple
 import numpy as np
 
 from scipy.spatial import ConvexHull
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon
 
 
 # Mean radius of Earth in meters derived from the World Geodetic System (WGS 84).
@@ -63,35 +63,6 @@ def latlon2AEQ(
     y = k * (math.cos(t0) * math.sin(tp) - math.sin(t0) * math.cos(tp) * math.cos(lp - l0))
 
     return x, y
-
-
-def trim_network(input, poly: Polygon):
-    from benchmark import Network
-
-    centroid = poly.centroid.y, poly.centroid.x
-    points = [latlon2AEQ(*centroid, p[1], p[0]) for p in poly.exterior.coords]
-    poly = Polygon(points)
-
-    # Find the nodes that are not contained in the polygon.
-    remove = set()
-    for i, node in enumerate(input.nodes):
-        point = Point(latlon2AEQ(*centroid, node.latitude, node.longitude))
-        if not poly.contains(point):
-            remove.add(i)
-
-    # Reconstruct the network without the removed nodes.
-    output = Network(input.end)
-    for i, node in enumerate(input.nodes):
-        if i not in remove:
-            output.add_node(i, node.latitude, node.longitude, node.stop)
-    for conn in input.conns:
-        if conn.from_node_id not in remove and conn.to_node_id not in remove:
-            output.add_conn(conn.trip_id, conn.from_node_id, conn.to_node_id, conn.departure_time, conn.arrival_time)
-    for path in input.paths:
-        if path.node_a_id not in remove and path.node_b_id not in remove:
-            output.add_path(path.node_a_id, path.node_b_id, path.duration)
-
-    return output
 
 
 def extended_convex_hull(points: List[Tuple[float, float]], dist: float = 100, r: float = WSG84_R) -> Polygon:
