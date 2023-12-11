@@ -10,6 +10,10 @@ from shapely.geometry import Polygon
 from .util import haversine, latlon2AEQ
 
 
+ox.settings.useful_tags_node = []
+ox.settings.useful_tags_way = []
+
+
 def osm_graph_from_poly(poly: Polygon):
     M = ox.graph_from_polygon(
         poly,
