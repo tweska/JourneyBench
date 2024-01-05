@@ -1,41 +1,66 @@
 #!/usr/bin/env python3
+import pathlib
 
-from typing import Dict, Tuple
-
+import osmium
 import networkx as nx
-import osmnx as ox
 from scipy.spatial import KDTree
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
 
-from .util import haversine, latlon2AEQ
-
-
-ox.settings.useful_tags_node = []
-ox.settings.useful_tags_way = []
+from .util import haversine, latlon2xyz
 
 
-def osm_graph_from_poly(poly: Polygon):
-    M = ox.graph_from_polygon(
-        poly,
-        network_type='walk',
-        simplify=False,
-        retain_all=True,
-        truncate_by_edge=False,
-    )
+class OSMHandler(osmium.SimpleHandler):
+    def __init__(self, graph, poly):
+        super(OSMHandler, self).__init__()
+        self.graph = graph
+        self.poly = poly
 
-    G = nx.Graph()
-    G.add_nodes_from([(f'__OSM_{v}', {'lat': d['y'], 'lon': d['x']}) for v, d in M.nodes(data=True)])
-    G.add_edges_from([(f'__OSM_{u}', f'__OSM_{v}') for u, v in M.edges(data=False) if u is not v])
-    return G
+    def way(self, w):
+        if 'highway' not in w.tags:
+            return
+
+        for i in range(len(w.nodes) - 1):
+            a = w.nodes[i]
+            b = w.nodes[i + 1]
+
+            # Skip if edge is (partly) outside the target polygon.
+            if self.poly is not None and (
+                not self.poly.contains(Point(a.location.lon, a.location.lat)) or
+                not self.poly.contains(Point(b.location.lon, b.location.lat))
+            ):
+                continue
+
+            self.graph.add_node(f'__OSM_{a.ref}', lat=a.location.lat, lon=a.location.lon)
+            self.graph.add_node(f'__OSM_{b.ref}', lat=b.location.lat, lon=b.location.lon)
+            self.graph.add_edge(f'__OSM_{a.ref}', f'__OSM_{b.ref}')
 
 
-def add_stops(G: nx.Graph, stops: Dict[int, Tuple[float, float]], centroid: Tuple[float, float]) -> None:
-    nodes = [(v, latlon2AEQ(*centroid, data['lat'], data['lon'])) for v, data in G.nodes(data=True)]
+def osm2nx(osm_file_path: pathlib.Path, poly: Polygon = None) -> nx.Graph:
+    """
+    Read a `.osm.pbf` file and convert it into a NetworkX Graph.
+    :param osm_file_path: path to `.osm.pbf` file
+    :param poly: polygon to use during parsing, nodes outside polygon are ignored
+    :return: the resulting NetworkX Graph
+    """
+    graph = nx.Graph()
+    handler = OSMHandler(graph, poly)
+    handler.apply_file(osm_file_path, locations=True)
+    return graph
+
+
+def combine(G: nx.Graph, G_other: nx.Graph) -> None:
+    """
+    Combine two NetworkX graphs and connect all nodes from the second graph to
+    the nearest node in the first graph, result are stored in the first graph.
+    :param G: first NetworkX Graph, result is stored here
+    :param G_other: second NetworkX Graph
+    """
+    nodes = [(v, latlon2xyz(data['lat'], data['lon'])) for v, data in G.nodes(data=True)]
     tree = KDTree(list(zip(*nodes))[1])
 
-    for u, (lat, lon) in stops.items():
-        v = nodes[tree.query(latlon2AEQ(*centroid, lat, lon))[1]][0]
-        G.add_node(u, lat=lat, lon=lon, keep=True)
+    for u, data in G_other.nodes(data=True):
+        v = nodes[tree.query(latlon2xyz(data['lat'], data['lon']))[1]][0]
+        G.add_node(u, lat=data['lat'], lon=data['lon'], keep=True)
         G.add_edge(u, v)
 
 
@@ -55,7 +80,6 @@ def contract(G: nx.Graph, rounds=100) -> nx.Graph:
     than 3 and all connected components containing at least one transit stops.
     :param G: NetworkX Graph with attribute 'distance' on edges
     :param rounds: maximum number of iterations to run the contraction
-    :param verbose: print helpful messages
     :return: a contracted copy of the original graph
     """
     # Remove all connected components without a transit stop.
@@ -82,12 +106,4 @@ def contract(G: nx.Graph, rounds=100) -> nx.Graph:
         if count == 0:
             break
 
-    return G
-
-
-def combine(stops: Dict[int, Tuple[float, float]], poly: Polygon) -> nx.Graph:
-    G = osm_graph_from_poly(poly)
-    add_stops(G, stops, (poly.centroid.y, poly.centroid.x))
-    set_distance(G)
-    G = contract(G)
     return G

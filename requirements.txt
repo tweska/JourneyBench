@@ -5,4 +5,4 @@ scipy==1.11.3
 shapely
 networkx==3.2.1
 numpy
-osmnx==1.7.1
+osmium

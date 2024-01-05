@@ -10,7 +10,7 @@ from shapely.geometry import Polygon, Point
 from benchmark import Network
 from gtfs import GTFS
 from gtfs.util import find_busiest_date, generate_date_trip_dict, generate_trip_stop_time_dict
-from geo.util import haversine, latlon2AEQ
+from geo.util import haversine
 
 
 def gtfs2network(
@@ -69,20 +69,16 @@ def gtfs2network(
 
 
 def trim_network(input: Network, poly: Polygon):
-    centroid = poly.centroid.y, poly.centroid.x
-    points = [latlon2AEQ(*centroid, p[1], p[0]) for p in poly.exterior.coords]
-    poly = Polygon(points)
-
-    # Find the nodes that are not contained in the polygon.
+    # Find the nodes that are contained in the polygon.
     in_poly, in_conns = set(), set()
     for i, node in enumerate(input.nodes):
-        point = Point(latlon2AEQ(*centroid, node.latitude, node.longitude))
-        if poly.contains(point):
+        if poly.contains(Point(node.longitude, node.latitude)):
             in_poly.add(i)
     for conn in input.conns:
         in_conns.add(conn.from_node_id)
         in_conns.add(conn.to_node_id)
     keep = in_poly.intersection(in_conns)
+    print(len(keep))
 
     # Reconstruct the network without the removed nodes.
     output = Network(input.end)
@@ -126,6 +122,6 @@ if __name__ == '__main__':
 
     if args.poly:
         with open(args.poly, 'r') as file:
-            poly = parse_poly(file.readlines(), hull=True)
+            poly = parse_poly(file.readlines())
             network = trim_network(network, poly)
     network.write(args.output)

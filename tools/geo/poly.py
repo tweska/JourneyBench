@@ -1,8 +1,7 @@
 from shapely.geometry import MultiPolygon
-from shapely import concave_hull
 
 
-def parse_poly(lines, hull=False, ratio=0.1):
+def parse_poly(lines):
     """
     Parse an Osmosis polygon filter file.
     Accept a sequence of lines from a polygon file, return a shapely.geometry.MultiPolygon object.
@@ -49,6 +48,5 @@ def parse_poly(lines, hull=False, ratio=0.1):
             in_ring = True
 
     mp = MultiPolygon(coords)
-    if not hull:
-        return mp
-    return concave_hull(mp, ratio)
+    if len(mp.geoms) == 1:
+        return mp.geoms[0]

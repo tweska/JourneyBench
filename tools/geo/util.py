@@ -1,10 +1,5 @@
 import math
-from typing import List, Tuple
-
-import numpy as np
-
-from scipy.spatial import ConvexHull
-from shapely.geometry import Polygon
+from typing import Tuple
 
 
 # Mean radius of Earth in meters derived from the World Geodetic System (WGS 84).
@@ -36,6 +31,18 @@ def haversine(
     )))
 
 
+def latlon2xyz(
+        lat: float, lon: float,
+        r: float = WSG84_R,
+) -> Tuple[float, float, float]:
+    lat = math.radians(lat)
+    lon = math.radians(lon)
+    x = r * math.cos(lat) * math.cos(lon)
+    y = r * math.cos(lat) * math.sin(lon)
+    z = r * math.sin(lat)
+    return x, y, z
+
+
 def latlon2AEQ(
         lat_0: float, lon_0: float,
         lat_p: float, lon_p: float
@@ -63,28 +70,3 @@ def latlon2AEQ(
     y = k * (math.cos(t0) * math.sin(tp) - math.sin(t0) * math.cos(tp) * math.cos(lp - l0))
 
     return x, y
-
-
-def extended_convex_hull(points: List[Tuple[float, float]], dist: float = 100, r: float = WSG84_R) -> Polygon:
-    """
-    Create a convex hull around a list of points, extend the hull by a given distance.
-    :param points: a list of points (lat, lon) to find the convex hull for
-    :param dist: how far to extend the convex hull (in meters)
-    :param r: radius of the sphere, default is the mean radius of Earth in meters as defined by the IUGG (Geodetic Reference System 1980)
-    :return: a polygon describing the (extended) convex hull
-    """
-    convex_points = np.array([points[i] for i in ConvexHull(points).vertices])
-    if dist == 0:
-        return Polygon([(p[1], p[0]) for p in convex_points])
-
-    norm_vectors = []
-    for i, v in enumerate(convex_points):
-        nu = v - convex_points[(i-1) % len(convex_points)]
-        nw = v - convex_points[(i+1) % len(convex_points)]
-        vector = (nu / np.linalg.norm(nu)) + (nw / np.linalg.norm(nw))
-        norm_vectors.append(vector / np.linalg.norm(vector))
-    norm_vectors = np.array(norm_vectors)
-
-    diff = [(math.fabs(math.degrees(dist / (r * math.sin(math.radians(p[1]))))),
-             math.fabs(math.degrees(dist / (r * math.cos(math.radians(p[0])))))) for p in convex_points]
-    return Polygon([(p[1], p[0]) for p in (convex_points + diff * norm_vectors)])

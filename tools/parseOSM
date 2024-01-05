@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
 import pathlib
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import networkx as nx
 from shapely.geometry import Polygon
-
-from geo.util import extended_convex_hull
 
 
 def prep(network_path: pathlib.Path, poly_path: Optional[pathlib.Path] = None):
@@ -14,20 +12,26 @@ def prep(network_path: pathlib.Path, poly_path: Optional[pathlib.Path] = None):
     from geo.poly import parse_poly
 
     network = Network.read(network_path)
-    nodes = {i: (n.latitude, n.longitude) for i, n in enumerate(network.nodes)}
+    G_stops = nx.Graph()
+    G_stops.add_nodes_from([(i, {'lat': n.latitude, 'lon': n.longitude}) for i, n in enumerate(network.nodes)])
 
     if poly_path:
         with open(poly_path, 'r') as file:
-            poly = parse_poly(file.readlines(), hull=True)
+            poly = parse_poly(file.readlines())
+            assert(type(poly) == Polygon)
     else:
-        poly = extended_convex_hull(list(nodes.values()))
+        poly = None
 
-    return network, nodes, poly
+    return network, G_stops, poly
 
 
-def run(nodes: Dict[int, Tuple[float, float]], poly: Optional[Polygon]) -> nx.Graph:
-    from geo.osm import combine
-    return combine(nodes, poly)
+def run(osm_file_path: pathlib.Path, G_stops: nx.Graph, poly: Optional[Polygon]) -> nx.Graph:
+    import geo.osm
+    G = geo.osm.osm2nx(osm_file_path, poly)
+    geo.osm.combine(G, G_stops)
+    geo.osm.set_distance(G)
+    G = geo.osm.contract(G)
+    return G
 
 
 def finish(network, G, speed_ms):
@@ -48,7 +52,8 @@ if __name__ == '__main__':
         prog='parseOSM',
         description='combine existing Network file with paths from OpenStreetMaps'
     )
-    parser.add_argument('input', type=pathlib.Path, help='input Network file')
+    parser.add_argument('input_network', type=pathlib.Path, help='input Network file')
+    parser.add_argument('input_OSM', type=pathlib.Path, help='input OSM file')
     parser.add_argument('output', type=pathlib.Path, help='output Network file')
     parser.add_argument('pickle', type=pathlib.Path, nargs='?', help='intermediate Python Pickle file')
     parser.add_argument('--poly', type=pathlib.Path, required=False,
@@ -61,25 +66,30 @@ if __name__ == '__main__':
     speed_ms = args.speed * 1000 / 3600
 
     if args.stage == 'prep':
-        _, nodes, poly = prep(args.input, args.poly)
+        _, G_stops, poly = prep(args.input_network, args.poly)
+        poly_points = [p for p in poly.exterior.coords]
         with open(args.pickle, 'wb') as file:
-            pickle.dump((nodes, [p for p in poly.exterior.coords]), file)
+            pickle.dump(('prep', G_stops, poly_points), file)
     elif args.stage == 'run':
         with open(args.pickle, 'rb') as file:
-            nodes, poly_points = pickle.load(file)
+            stage, G_stops, poly_points = pickle.load(file)
+        assert(stage == 'prep')
         poly = Polygon(poly_points)
-        G = run(nodes, poly)
+        G = run(args.input_OSM, G_stops, poly)
         with open(args.pickle, 'wb') as file:
-            pickle.dump(G, file)
+            pickle.dump(('run', G), file)
     elif args.stage == 'finish':
         from benchmark import Network
-        network = Network.read(args.input)
+        network = Network.read(args.input_network)
         with open(args.pickle, 'rb') as file:
-            G = pickle.load(file)
+            stage, G = pickle.load(file)
+        assert(stage == 'run')
         finish(network, G, speed_ms)
+        G.clear()
         network.write(args.output)
     else:
-        network, nodes, poly = prep(args.input, args.poly)
-        G = run(nodes, poly)
+        network, G_stops, poly = prep(args.input_network, args.poly)
+        G = run(args.input_OSM, G_stops, poly)
         finish(network, G, speed_ms)
+        G.clear()
         network.write(args.output)
