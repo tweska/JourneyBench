@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+
+import pathlib
+
+import networkx as nx
+
+from benchmark import Network
+
+
+def convert_transitive(network: Network, cutoff: int) -> Network:
+    new_network = Network(network.end)
+
+    nodes = set()
+    for node_id, node in enumerate(network.nodes):
+        if not node.stop:
+            continue
+        new_network.add_node(
+            node_id,
+            node.latitude, node.longitude,
+            True,
+        )
+        nodes.add(node_id)
+
+    stops = set()
+    for conn in network.conns:
+        new_network.add_conn(
+            conn.trip_id,
+            conn.from_node_id, conn.to_node_id,
+            conn.departure_time, conn.arrival_time,
+        )
+        stops.add(conn.from_node_id)
+        stops.add(conn.to_node_id)
+
+    paths = [(path.node_a_id, path.node_b_id, path.duration) for path in network.paths]
+    G = nx.Graph()
+    G.add_weighted_edges_from(paths)
+
+    for node in nodes:
+        if node not in G:
+            print(f'Warning: node {node} is not present in paths')
+            continue
+        durations = nx.single_source_shortest_path_length(G, node, cutoff)
+        for other, duration in durations.items():
+            if other not in nodes:
+                continue
+            new_network.add_path(node, other, duration)
+
+    G.clear()
+    return new_network
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', type=pathlib.Path)
+    parser.add_argument('output', type=pathlib.Path)
+    parser.add_argument('cutoff', type=int, nargs='?', default=900)
+    args = parser.parse_args()
+
+    network = Network.read(args.input)
+    print(f'Before: {network}')
+    network = convert_transitive(network, args.cutoff)
+    print(f'After: {network}')
+    network.write(args.output)
