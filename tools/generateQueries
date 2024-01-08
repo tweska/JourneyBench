@@ -3,7 +3,7 @@
 import argparse
 import random
 
-from osm import haversine
+from geo.util import haversine
 
 from benchmark import Network, Queries
 
@@ -38,8 +38,7 @@ def main():
     argparser.add_argument('output')
     args = argparser.parse_args()
 
-    network = Network()
-    network.read(args.network)
+    network = Network.read(args.network)
     print(network)
 
     queries = generate_queries(network, args.number, args.min_distance, args.max_distance, args.max_departure_time)
