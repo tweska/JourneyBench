@@ -41,7 +41,7 @@ def finish(network, G, speed_ms):
         network.add_node(v, data['lat'], data['lon'], stop=False)
 
     for u, v, data in G.edges(data=True):
-        network.add_path(u, v, int(round(data['distance'] / speed_ms)))
+        network.add_path(u, v, max(1, int(round(data['distance'] / speed_ms))))
 
 
 if __name__ == '__main__':
