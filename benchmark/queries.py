@@ -1,9 +1,13 @@
 from gzip import open
+from typing import TypeVar
 
 from .benchmark_core import Queries as CoreQueries
 from .benchmark_core import Query as CoreQuery
 
 from .queries_pb2 import PBQueries, PBQuery
+
+
+Self = TypeVar("Self", bound="Queries")
 
 
 class Query(CoreQuery):
@@ -17,17 +21,22 @@ class Queries(CoreQueries):
     def __repr__(self):
         return f"Queries(queries: {len(self.queries)})"
 
-    def read(self, filepath: str) -> None:
+    @classmethod
+    def read(cls, filepath: str) -> Self:
+        queries = Queries()
+
         pb_queries: PBQueries = PBQueries()
         with open(filepath, 'rb') as file:
             pb_queries.ParseFromString(file.read())
 
         for pb_query in pb_queries.queries:
-            self.add_query(
+            queries.add_query(
                 pb_query.from_node_id,
                 pb_query.to_node_id,
                 pb_query.departure_time,
             )
+
+        return queries
 
     def write(self, filepath: str) -> None:
         pb_queries: PBQueries = PBQueries()

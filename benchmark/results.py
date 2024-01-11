@@ -1,10 +1,13 @@
 from collections import defaultdict
 from gzip import open
-from typing import Dict, List
+from typing import Dict, List, TypeVar
 
 from .benchmark_core import JourneyPartType, JourneyPart, Journey, QueryResult, PreprocessingResult
 
 from .results_pb2 import PBResults, PBJourneyPartType
+
+
+Self = TypeVar("Self", bound="Results")
 
 
 class Results:
@@ -15,13 +18,16 @@ class Results:
         self.preprocessing_results = []
         self.query_results = defaultdict(list)
 
-    def read(self, filepath: str) -> None:
+    @classmethod
+    def read(cls, filepath: str) -> Self:
+        results = Results()
+
         pb_results: PBResults = PBResults()
         with open(filepath, 'rb') as file:
             pb_results.ParseFromString(file.read())
 
         for pb_preprocessing_result in pb_results.preprocessing:
-            self.preprocessing_results.append(pb_preprocessing_result.runtime_ns)
+            results.preprocessing_results.append(pb_preprocessing_result.runtime_ns)
 
         for pb_query_result in pb_results.queries:
             query_result = QueryResult(pb_query_result.runtime_ns)
@@ -35,7 +41,7 @@ class Results:
                         type = JourneyPartType.PATH
                     journey.add_part(type, pb_part.id)
                 query_result.add_journey(journey)
-            self.add_query_result(pb_query_result.query_id, query_result)
+            results.add_query_result(pb_query_result.query_id, query_result)
 
     def write(self, filepath: str) -> None:
         pb_results: PBResults = PBResults()

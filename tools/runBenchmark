@@ -40,10 +40,8 @@ def main():
             exit(-1)
 
     # Read the network and queries into memory.
-    network = Network()
-    network.read(args.network_file)
-    queries = Queries()
-    queries.read(args.queries_file)
+    network = Network.read(args.network_file)
+    queries = Queries.read(args.queries_file)
 
     # Initialize the benchmark and run it.
     try:
