@@ -7,7 +7,7 @@ all: csa.so
 %.o: %.cpp
 	$(CPP_COMPILER) $(CPP_FLAGS) -c $(CPP_INCLUDES) $< -o $@
 
-csa.so: csa.o data.o
+csa.so: csa.o
 	$(CPP_COMPILER) $(CPP_FLAGS) -shared $(CPP_INCLUDES) $^ -o $@
 
 clean:

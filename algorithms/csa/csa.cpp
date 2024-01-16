@@ -1,103 +1,222 @@
+#include <cassert>
+
 #include <algorithm>
 #include <limits>
-
-#include <iostream>
 
 #include "algorithm.h"
 #include "network.h"
 #include "results.h"
-#include "data.h"
+
+#define INF numeric_limits<u32>::max()
+#define EMPTY numeric_limits<u32>::max()
 
 using namespace std;
-using namespace CSA;
 namespace JB = JourneyBench;
 
-struct crumb {
-    bool is_conn;
-    u32 id;
-};
 
-class CSAAlgorithm : public JB::AlgorithmBase {
-    Data *data = NULL;
+namespace CSA {
 
-    int init(JB::Network *network) override {
-        data = read_data(network);
-        return data == NULL;
-    }
+    struct Conn {
+        u32 dep_stop;
+        u32 arr_stop;
+        u32 dep_time;
+        u32 arr_time;
+        u32 trip;
+        u32 index;  // Index in the original network data.
+        Conn *prev;
+    };
 
-    JB::Journey *__query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-        static Stop dep_stop = data->stops[from_stop_id];
+    struct Path {
+        u32 dep_stop;
+        u32 arr_stop;
+        u32 dur;
+        u32 index;  // Index in the original network data.
+    };
 
-        /* Initialize the stop times. */
-        u32 stops[data->stop_count];
-        crumb trail[data->stop_count];
-        for (u32 i = 0; i < data->stop_count; i++) {
-            stops[i] = numeric_limits<u32>::max();
-        }
-        for (u32 i = 0; i < dep_stop.path_count; i++) {
-            stops[dep_stop.paths[i].arr_stop] = departure_time + dep_stop.paths[i].dur;
-            trail[dep_stop.paths[i].arr_stop] = { false, i };
-        }
-        stops[from_stop_id] = departure_time;
+    struct JourneyLeg {
+        Conn *first_conn;
+        Conn *last_conn;
+        Path *path;
+    };
 
-        /* Initialize the trips. */
-        bool trips[data->trip_count]{};
 
-        /* Do the search. */
-        for (u32 i = 0; i < data->conn_count; i++) {
-            Conn conn = data->conns[i];
-            if (trips[conn.trip] || stops[conn.dep_stop] <= conn.dep_time) {
-                trips[conn.trip] = true;
-                if (stops[conn.arr_stop] > conn.arr_time) {
-                    stops[conn.arr_stop] = conn.arr_time;
-                    trail[conn.arr_stop] = { true, i };
+    class CSAAlgorithm : public JB::AlgorithmBase {
+        u32 conn_count = 0;
+        u32 stop_count = 0;
+        u32 trip_count = 0;
+        u32 *path_count = nullptr;
+
+        Conn *conns = nullptr;
+        Path **paths = nullptr;
+
+        /* Runtime data. */
+        u32 *stops = nullptr;
+        Conn **trips = nullptr;
+        JourneyLeg *journeys = nullptr;
+
+        bool initialized = false;
+
+
+        int init(JB::Network *network) override {
+            assert(!initialized);
+
+            conn_count = network->conns.size();
+            stop_count = network->nodes.size();
+            trip_count = network->trips.size();
+            path_count = new u32[conn_count]();
+
+            conns = new Conn[conn_count]();
+            paths = new Path*[stop_count]();
+
+            Conn *prev_conn[trip_count];
+            fill_n(prev_conn, trip_count, nullptr);
+
+            /* Load the connections. */
+            for (u32 i = 0; i < conn_count; i++) {
+                JB::Conn n_conn = network->conns[i];
+                conns[i] = {
+                        n_conn.from_node_id,
+                        n_conn.to_node_id,
+                        n_conn.departure_time,
+                        n_conn.arrival_time,
+                        n_conn.trip_id,
+                        i,
+                        prev_conn[n_conn.trip_id]
+                };
+                prev_conn[n_conn.trip_id] = &conns[i];
+            }
+
+            /* Load the paths. */
+            for (u32 i = 0, count = 0, last_stop = INF; i < network->paths.size(); i++, count--) {
+                JB::Path n_path = network->paths[i];
+
+                if (n_path.node_a_id != last_stop) {
+                    assert(count == 0);
+                    for (u32 j = i; j < network->paths.size(); j++) {
+                        if (network->paths[j].node_a_id != n_path.node_a_id) { break; }
+                        count++;
+                    }
+                    path_count[n_path.node_a_id] = count;
+                    paths[n_path.node_a_id] = new Path[count]();
+                    last_stop = n_path.node_a_id;
                 }
 
-                Stop arr_stop = data->stops[conn.arr_stop];
-                for (u32 j = 0; j < arr_stop.path_count; j++) {
-                    Path path = arr_stop.paths[j];
-                    stops[path.arr_stop] = min(stops[path.arr_stop], conn.arr_time + path.dur);
-                    trail[path.arr_stop] = { false, j };
+                paths[n_path.node_a_id][path_count[n_path.node_a_id] - count] = {
+                        n_path.node_a_id,
+                        n_path.node_b_id,
+                        n_path.duration,
+                        i
+                };
+            }
+
+            stops = new u32[stop_count]();
+            trips = new Conn*[trip_count]();
+            journeys = new JourneyLeg[stop_count]();
+
+            initialized = true;
+            return 0;
+        }
+
+        JB::Journey *__query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
+            assert(initialized);
+            assert(from_stop_id < stop_count && to_stop_id < stop_count);
+
+            /* Clear the runtime datastructures. */
+            fill_n(stops, stop_count, INF);
+            fill_n(trips, trip_count, nullptr);
+            fill_n(journeys, stop_count, (JourneyLeg) {nullptr, nullptr, nullptr});
+
+            /* Set the initial state. */
+            stops[from_stop_id] = departure_time;
+            for (u32 i = 0; i < path_count[from_stop_id]; i++) {
+                stops[paths[from_stop_id][i].arr_stop] = departure_time + paths[from_stop_id][i].dur;
+                journeys[paths[from_stop_id][i].arr_stop].path = &paths[from_stop_id][i];
+            }
+
+            /* Run the search by walking through all connections. */
+            for (u32 i = 0; i < conn_count; i++) {
+                Conn conn = conns[i];
+
+                /* Check if this connection is reachable. */
+                if (trips[conn.trip] != nullptr || stops[conn.dep_stop] <= conn.dep_time) {
+                    /* Save the first connection of the trip if needed. */
+                    if (trips[conn.trip] == nullptr) {
+                        trips[conn.trip] = &conns[i];
+                    }
+
+                    if (conn.arr_time < stops[conn.arr_stop]) {
+                        journeys[conn.arr_stop] = {
+                                trips[conn.trip],
+                                &conns[i],
+                                nullptr
+                        };
+                    }
+
+                    for (u32 j = 0; j < path_count[conn.arr_stop]; j++) {
+                        Path path = paths[conn.arr_stop][j];
+                        if (conn.arr_time + path.dur < stops[path.arr_stop]) {
+                            stops[path.arr_stop] = conn.arr_time + path.dur;
+                            journeys[path.arr_stop] = {
+                                    trips[conn.trip],
+                                    &conns[i],
+                                    &paths[conn.arr_stop][j]
+                            };
+                        }
+                    }
                 }
             }
-        }
 
-        if (stops[to_stop_id] == numeric_limits<u32>::max()) {
-            return nullptr;
-        }
+            /* Early return if no solution was found. */
+            if (stops[to_stop_id] == INF) { return nullptr; }
 
-        JB::Journey *journey = new JB::Journey();
-        u32 stop_id = to_stop_id;
-        while (stop_id != from_stop_id) {
+            JB::Journey *journey = new JB::Journey();
+            JourneyLeg *leg = &journeys[to_stop_id];
+            while (to_stop_id != from_stop_id) {
+                /* First: add the path if one is referenced, and update stop ID. */
+                if (leg->path != nullptr) {
+                    journey->add_prev_path(leg->path->index);
+                    to_stop_id = leg->path->dep_stop;
+                }
 
-            if (trail[stop_id].is_conn) {
-                journey->add_prev_conn(trail[stop_id].id);
-                stop_id = data->conns[trail[stop_id].id].dep_stop;
-            } else {
-                journey->add_prev_path(trail[stop_id].id);
-                stop_id = data->paths[trail[stop_id].id].dep_stop;
+                /* Second: add the connections if they exist, and update stop ID. */
+                if (leg->first_conn != nullptr) {
+                    assert(leg->last_conn != nullptr);
+
+                    /* Add each connection in the range from first to last. */
+                    for (Conn *conn = leg->last_conn; conn != leg->first_conn->prev; conn = conn->prev) {
+                        journey->add_prev_conn(conn->index);
+                    }
+                    to_stop_id = leg->first_conn->dep_stop;
+                }
+
+                assert(leg != &journeys[to_stop_id]);
+                leg = &journeys[to_stop_id];
             }
+            return journey;
         }
-        return journey;
-    }
 
-    vector<JB::Journey> *query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
-        if (data == NULL) { return nullptr; }
+        vector <JB::Journey> *query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
+            assert(initialized);
 
-        vector<JB::Journey> *result = new vector<JB::Journey>;
-        if (from_stop_id == to_stop_id) {
-            result->push_back(JB::Journey());
+            vector <JB::Journey> *result = new vector<JB::Journey>;
+            if (from_stop_id == to_stop_id) {
+                result->push_back(JB::Journey());
+                return result;
+            }
+            JB::Journey *journey = __query(from_stop_id, to_stop_id, departure_time);
+            if (journey == nullptr) {
+                return result;
+            }
+            result->push_back(*journey);
+            delete journey;
             return result;
         }
-        JB::Journey *journey = __query(from_stop_id, to_stop_id, departure_time);
-        if (journey == nullptr) {
-            return result;
-        }
-        result->push_back(*journey);
-        delete journey;
-        return result;
-    }
-};
+
+    };
+
+}
+
+using namespace CSA;
 
 extern "C" CSAAlgorithm* createInstance() {
     return new CSAAlgorithm();
