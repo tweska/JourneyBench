@@ -63,10 +63,12 @@ namespace CSA {
             conn_count = network->conns.size();
             stop_count = network->nodes.size();
             trip_count = network->trips.size();
-            path_count = new u32[conn_count]();
+            path_count = new u32[stop_count]();
+            fill_n(path_count, stop_count, 0);
 
             conns = new Conn[conn_count]();
             paths = new Path*[stop_count]();
+            fill_n(paths, stop_count, nullptr);
 
             Conn *prev_conn[trip_count];
             fill_n(prev_conn, trip_count, nullptr);
@@ -144,7 +146,9 @@ namespace CSA {
                         trips[conn.trip] = &conns[i];
                     }
 
+                    /* Check if the current connection improves the arrival time. */
                     if (conn.arr_time < stops[conn.arr_stop]) {
+                        stops[conn.arr_stop] = conn.arr_time;
                         journeys[conn.arr_stop] = {
                                 trips[conn.trip],
                                 &conns[i],
@@ -152,6 +156,7 @@ namespace CSA {
                         };
                     }
 
+                    /* Check for improvements on each outgoing path. */
                     for (u32 j = 0; j < path_count[conn.arr_stop]; j++) {
                         Path path = paths[conn.arr_stop][j];
                         if (conn.arr_time + path.dur < stops[path.arr_stop]) {
@@ -195,7 +200,7 @@ namespace CSA {
             return journey;
         }
 
-        vector <JB::Journey> *query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) {
+        vector <JB::Journey> *query(u32 from_stop_id, u32 to_stop_id, u32 departure_time) override {
             assert(initialized);
 
             vector <JB::Journey> *result = new vector<JB::Journey>;
