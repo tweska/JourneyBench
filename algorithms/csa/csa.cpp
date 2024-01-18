@@ -154,18 +154,18 @@ namespace CSA {
                                 &conns[i],
                                 nullptr
                         };
-                    }
 
-                    /* Check for improvements on each outgoing path. */
-                    for (u32 j = 0; j < path_count[conn.arr_stop]; j++) {
-                        Path path = paths[conn.arr_stop][j];
-                        if (conn.arr_time + path.dur < stops[path.arr_stop]) {
-                            stops[path.arr_stop] = conn.arr_time + path.dur;
-                            journeys[path.arr_stop] = {
-                                    trips[conn.trip],
-                                    &conns[i],
-                                    &paths[conn.arr_stop][j]
-                            };
+                        /* Check for improvements on each outgoing path. */
+                        for (u32 j = 0; j < path_count[conn.arr_stop]; j++) {
+                            Path path = paths[conn.arr_stop][j];
+                            if (conn.arr_time + path.dur < stops[path.arr_stop]) {
+                                stops[path.arr_stop] = conn.arr_time + path.dur;
+                                journeys[path.arr_stop] = {
+                                        trips[conn.trip],
+                                        &conns[i],
+                                        &paths[conn.arr_stop][j]
+                                };
+                            }
                         }
                     }
                 }
