@@ -43,6 +43,8 @@ class Results:
                 query_result.add_journey(journey)
             results.add_query_result(pb_query_result.query_id, query_result)
 
+        return results
+
     def write(self, filepath: str) -> None:
         pb_results: PBResults = PBResults()
 
