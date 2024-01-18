@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+import os
+import sys
+import argparse
+
+from util import reconstruct_journey, check_journey
+
+from benchmark import Benchmark, Journey, Network, Queries, Conn, Path
+
+
+def run_test(test, algo):
+    network, query_list = test
+    network.sort()
+    for dep_node, arr_node, dep_time, arr_time, name in query_list:
+        pid = os.fork()
+        if pid == 0:
+            queries = Queries()
+            queries.add_query(dep_node, arr_node, dep_time)
+            bench = Benchmark(network, queries, algo)
+            results = bench.run_benchmark()
+            journeys = results.query_results[0][0].journeys
+
+            fail, found = False, False
+            if len(journeys) == 0:
+                fail = True
+            else:
+                for journey in journeys:
+                    reconstructed = reconstruct_journey(network, journey)
+                    legal, logic, arrival = check_journey(reconstructed, dep_node, arr_node, dep_time)
+                    if not legal:
+                        print(f"Encountered an illegal journey!", file=sys.stderr)
+                    if not logic:
+                        print(f"Encountered an illogical journey!", file=sys.stderr)
+                    if arrival == arr_time or len(reconstructed) == 0 and arr_time is None:
+                        found = True
+
+                if not found:
+                    print(f"Did not find a journey with a matching EAT!", file=sys.stderr)
+                    fail = True
+
+            if fail:
+                print(f"Failed test '{name}': {dep_node} ({dep_time}) -> {arr_node} ({arr_time})",
+                      file=sys.stderr)
+            exit()
+        else:
+            _, status = os.wait()
+            if status != 0:
+                print("Child process exited with an error!")
+
+
+network_single = Network(3600)
+a = network_single.add_node(0, 0, 0, True)
+test_single = (network_single, [
+    (a, a, 0, None, "single"),
+])
+
+network_double = Network(3600)
+a = network_double.add_node(0, 0, 0, True)
+b = network_double.add_node(1, 1, 1, True)
+network_double.add_conn(0, a, b, 100, 200)
+network_double.add_path(a, b, 150)
+test_double = (network_double, [
+    (a, b, 0, 150, "double path"),
+    (a, b, 75, 200, "double conn"),
+    (a, b, 250, 400, "double missed conn"),
+])
+
+network_simple = Network(3600)
+a = network_simple.add_node(0, 0, 0, True)
+b = network_simple.add_node(1, 0, 1, True)
+c = network_simple.add_node(2, 0, 2, True)
+d = network_simple.add_node(3, 0, 3, True)
+e = network_simple.add_node(4, 0, 4, True)
+f = network_simple.add_node(5, 0, 5, True)
+g = network_simple.add_node(6, 0, 6, True)
+network_simple.add_conn(0, a, b, 100, 150)
+network_simple.add_conn(1, c, d, 300, 350)
+network_simple.add_conn(2, e, f, 500, 550)
+network_simple.add_path(a, b, 100)
+network_simple.add_path(b, c, 100)
+network_simple.add_path(c, d, 100)
+network_simple.add_path(d, e, 100)
+network_simple.add_path(e, f, 100)
+network_simple.add_path(f, g, 100)
+network_simple.add_path(b, a, 100)
+network_simple.add_path(c, b, 100)
+network_simple.add_path(d, c, 100)
+network_simple.add_path(e, d, 100)
+network_simple.add_path(f, e, 100)
+network_simple.add_path(g, f, 100)
+test_simple = (network_simple, [
+    (b, c, 0, 100, "simple path"),
+    (c, d, 300, 350, "simple conn"),
+    (c, d, 275, 350, "simple missed conn"),
+])
+
+
+network_ushape = Network(3600)
+a = network_ushape.add_node(0, 0, 0, True)
+b = network_ushape.add_node(1, 0, 1, True)
+c = network_ushape.add_node(2, 0, 2, True)
+d = network_ushape.add_node(3, 1, 3, True)
+e = network_ushape.add_node(4, 2, 2, True)
+f = network_ushape.add_node(5, 2, 1, True)
+g = network_ushape.add_node(6, 2, 0, True)
+network_ushape.add_conn(0, a, b, 0, 100)
+network_ushape.add_conn(0, b, c, 100, 200)
+network_ushape.add_conn(0, c, d, 200, 300)
+network_ushape.add_conn(0, d, e, 300, 400)
+network_ushape.add_conn(0, e, f, 400, 500)
+network_ushape.add_conn(0, f, g, 500, 600)
+network_ushape.add_path(b, f, 100)
+test_ushape = (network_ushape, [
+    (a, g, 0, 600, "entire trip"),
+    (a, f, 0, 200, "shortcut"),
+])
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('algorithm', type=str)
+args = parser.parse_args()
+
+for test in [test_single, test_double, test_simple, test_ushape]:
+    run_test(test, args.algorithm)
+
+print("Reached end of tests!")
