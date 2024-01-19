@@ -62,6 +62,7 @@ class Results:
                     pb_journey = pb_query_result.journeys.add()
                     for part in journey.parts:
                         pb_part = pb_journey.parts.add()
+                        pb_part.id = part.id
                         if part.type == JourneyPartType.CONN:
                             pb_part.type = PBJourneyPartType.CONN
                         else:
