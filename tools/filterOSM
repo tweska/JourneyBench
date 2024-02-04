@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+osmium tags-filter $1 w/highway -o /tmp/inter.osm.pbf -O && osmium tags-filter /tmp/inter.osm.pbf -i w/area=yes w/access=private w/highway=abandoned,bus_guideway,construction,cycleway,motor,no,planned,platform,proposed,raceway,razed w/foot=no w/service=private -o $2 -O
+
