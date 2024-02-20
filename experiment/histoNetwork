@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+
+import matplotlib.pyplot as plt
+
+from benchmark import Network
+
+HOUR = 3600
+
+MIN_TIME = 0
+MAX_TIME = HOUR * 48  # 48 hours
+INTERVAL = HOUR // 4  # 15 minutes
+
+N_BINS = MAX_TIME // INTERVAL
+X = [i for i in range(N_BINS)]
+LABELS = [f'{h%24:02}:{rs//60:02}' for h, rs in [divmod(t, HOUR) for t in range(MIN_TIME, MAX_TIME, INTERVAL)]] + \
+    [f'{h%24:02}:{rs//60:02}' for h, rs in [divmod(MAX_TIME, HOUR)]]
+
+
+def histo_network(network: Network) -> None:
+    connections = [0] * N_BINS
+    for conn in network.conns:
+        assert conn.departure_time <= MAX_TIME
+        connections[conn.departure_time // INTERVAL] += 1
+
+    for i in range(N_BINS):
+        connections[i] *= 3600/INTERVAL
+
+    plt.bar(X, height=connections, width=1, align='edge', color='k')
+    plt.xticks((X + [X[-1]+1])[::3600//INTERVAL*3], LABELS[::3600//INTERVAL*3], rotation=90)
+    plt.xlim(X[0], X[-1]+1)
+    plt.title("Number of departing connections per hour")
+    plt.ylabel("Connections per hour")
+    plt.xlabel("Time")
+    plt.show()
+
+
+if __name__ == '__main__':
+    import argparse
+    import pathlib
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', type=pathlib.Path)
+    args = parser.parse_args()
+
+    network = Network.read(args.input)
+    histo_network(network)
