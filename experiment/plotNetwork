@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from benchmark import Network
+from tools.geo.util import haversine
 
 RESOLUTION = 1/100
 BORDER = 10*RESOLUTION
@@ -34,9 +35,14 @@ def plot_network(network: Network) -> None:
         image[network_map[conn.from_node_id]] += 1
 
     # Normalize the image
-    for i in np.ndindex(image.shape):
-        image[i] /= 48.0
-    # TODO: Normalize by square KM as well!
+    for y, x in np.ndindex(image.shape):
+        a = haversine(min_lat + y * RESOLUTION, min_lon + x * RESOLUTION,
+                      min_lat + (y+1) * RESOLUTION, min_lon + (x+1) * RESOLUTION)
+        b = haversine(min_lat + y * RESOLUTION, min_lon + x * RESOLUTION,
+                      min_lat + y * RESOLUTION, min_lon + (x+1) * RESOLUTION)
+        c = haversine(min_lat + y * RESOLUTION, min_lon + x * RESOLUTION,
+                      min_lat + (y+1) * RESOLUTION, min_lon + x * RESOLUTION)
+        image[(y, x)] /= 48.0 * ((a * (b + c)) / 2000000)
 
     # Create the x/y ticks labels
     xticks, yticks = [], []
@@ -58,7 +64,7 @@ def plot_network(network: Network) -> None:
     plt.imshow(image, vmin=1/10**9, cmap=cmap, aspect='equal', origin='lower',
                interpolation='gaussian', interpolation_stage='rgba')
     plt.colorbar()
-    plt.title("Average number of outgoing connections per hour")
+    plt.title("Average number of outgoing connections\nper km² per hour", style='italic')
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
     plt.xticks(xticks, xlabel)
