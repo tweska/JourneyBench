@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
+from benchmark import Network
+
+RESOLUTION = 1/100
+BORDER = 10*RESOLUTION
+
+
+def a2i(a, base, resolution=RESOLUTION):
+    return int((a - base) / resolution)
+
+
+def plot_network(network: Network) -> None:
+    # Find the boundaries of the map
+    min_lat, min_lon, max_lat, max_lon = 90.0, 180.0, -90.0, -180.0
+    for node in network.nodes:
+        min_lat = (min(min_lat, node.latitude - BORDER) // RESOLUTION) * RESOLUTION
+        min_lon = (min(min_lon, node.longitude - BORDER) // RESOLUTION) * RESOLUTION
+        max_lat = (max(max_lat, node.latitude + BORDER) // RESOLUTION) * RESOLUTION
+        max_lon = (max(max_lon, node.longitude + BORDER) // RESOLUTION) * RESOLUTION
+
+    # Map node IDs to a cell in the image
+    network_map = {}
+    for i, node in enumerate(network.nodes):
+        network_map[i] = (a2i(node.latitude, min_lat), a2i(node.longitude, min_lon))
+
+    # Count the number of connections
+    image = np.zeros((a2i(max_lat, min_lat) + 1, a2i(max_lon, min_lon) + 1), dtype=float)
+    for conn in network.conns:
+        image[network_map[conn.from_node_id]] += 1
+
+    # Normalize the image
+    for i in np.ndindex(image.shape):
+        image[i] /= 48.0
+    # TODO: Normalize by square KM as well!
+
+    # Create the x/y ticks labels
+    xticks, yticks = [], []
+    xlabel, ylabel = [], []
+    for lat in range(-90, 90):
+        i = a2i(lat, min_lat)
+        if 0 <= i <= a2i(max_lat, min_lat):
+            yticks.append(i)
+            ylabel.append(f'{lat}°')
+    for lon in range(-180, 180):
+        i = a2i(lon, min_lon)
+        if 0 <= i <= a2i(max_lon, min_lon):
+            xticks.append(i)
+            xlabel.append(f'{lon}°')
+
+    # Plot the image
+    cmap = mpl.colormaps['RdYlGn'].copy()
+    cmap.set_under(color='white')
+    plt.imshow(image, vmin=1/10**9, cmap=cmap, aspect='equal', origin='lower',
+               interpolation='gaussian', interpolation_stage='rgba')
+    plt.colorbar()
+    plt.title("Average number of outgoing connections per hour")
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.xticks(xticks, xlabel)
+    plt.yticks(yticks, ylabel)
+    plt.grid()
+    plt.show()
+
+
+if __name__ == '__main__':
+    import argparse
+    import pathlib
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', type=pathlib.Path)
+    args = parser.parse_args()
+
+    network = Network.read(args.input)
+    plot_network(network)
