@@ -7,8 +7,10 @@ import numpy as np
 from benchmark import Network
 from tools.geo.util import haversine
 
-RESOLUTION = 1/100
-BORDER = 10*RESOLUTION
+RESOLUTION = 1/500  # Countries: 1/50; Cities: 1/500
+BORDER = 5*RESOLUTION
+
+TICKS_PER_DEGREE = 10  # Countries: 1; Cities: 10
 
 
 def a2i(a, base, resolution=RESOLUTION):
@@ -47,12 +49,16 @@ def plot_network(network: Network) -> None:
     # Create the x/y ticks labels
     xticks, yticks = [], []
     xlabel, ylabel = [], []
-    for lat in range(-90, 90):
+    for lat in range(-90*TICKS_PER_DEGREE, 90*TICKS_PER_DEGREE):
+        if TICKS_PER_DEGREE != 1:
+            lat /= TICKS_PER_DEGREE
         i = a2i(lat, min_lat)
         if 0 <= i <= a2i(max_lat, min_lat):
             yticks.append(i)
             ylabel.append(f'{lat}°')
-    for lon in range(-180, 180):
+    for lon in range(-180*TICKS_PER_DEGREE, 180*TICKS_PER_DEGREE):
+        if TICKS_PER_DEGREE != 1:
+            lon /= TICKS_PER_DEGREE
         i = a2i(lon, min_lon)
         if 0 <= i <= a2i(max_lon, min_lon):
             xticks.append(i)
@@ -61,15 +67,14 @@ def plot_network(network: Network) -> None:
     # Plot the image
     cmap = mpl.colormaps['RdYlGn'].copy()
     cmap.set_under(color='white')
-    plt.imshow(image, vmin=1/10**9, cmap=cmap, aspect='equal', origin='lower',
-               interpolation='gaussian', interpolation_stage='rgba')
-    plt.colorbar()
-    plt.title("Average number of outgoing connections\nper km² per hour", style='italic')
+    plt.imshow(image, vmin=1/10**9, cmap=cmap, aspect='equal', origin='lower')
+    plt.colorbar(orientation='horizontal', label='Departures per km² per hour')
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
     plt.xticks(xticks, xlabel)
     plt.yticks(yticks, ylabel)
     plt.grid()
+    plt.tight_layout()
     plt.show()
 
 
@@ -82,4 +87,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     network = Network.read(args.input)
+    print(network)
     plot_network(network)
