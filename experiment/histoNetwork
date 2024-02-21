@@ -28,9 +28,9 @@ def histo_network(network: Network) -> None:
     plt.bar(X, height=connections, width=1, align='edge', color='k')
     plt.xticks((X + [X[-1]+1])[::3600//INTERVAL*3], LABELS[::3600//INTERVAL*3], rotation=90)
     plt.xlim(X[0], X[-1]+1)
-    plt.title("Number of departing connections per hour")
-    plt.ylabel("Connections per hour")
+    plt.ylabel("Departures per hour")
     plt.xlabel("Time")
+    plt.tight_layout()
     plt.show()
 
 
