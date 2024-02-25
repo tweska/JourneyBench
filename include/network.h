@@ -34,7 +34,7 @@ namespace JourneyBench {
         vector <Conn> conns;
         vector <Path> paths;
 
-        vector <vector<Conn *>> trips;
+        vector <vector<Conn *>> trips;  // NOTE: SHOULD NEVER BE USED TO GET CONNECTIONS
     };
 }
 

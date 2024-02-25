@@ -34,7 +34,6 @@ class Network(CoreNetwork):
         with open(filepath, 'rb') as file:
             pb_network.ParseFromString(file.read())
 
-        [network.add_trip() for _ in range(pb_network.trip_count)]
         network.end = pb_network.end_time
 
         for node_id, pb_node in enumerate(pb_network.nodes):
