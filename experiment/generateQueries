@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+
+# This program will generate queries between 0 and 40KM. The distance is split
+# up into 40 (1KM) bins and for each bin we generate 125 queries to get a total
+# of 5000 queries.
+
+import argparse
+import random
+
+from benchmark import Network, Queries
+from tools.geo.util import haversine
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('network')
+parser.add_argument('output')
+args = parser.parse_args()
+
+network = Network.read(args.network)
+stops = [(i, n.latitude, n.longitude) for i, n in enumerate(network.nodes) if n.stop]
+
+bins = [0] * 40
+pairs = [[] for _ in range(40)]
+
+while min(bins) < 125:
+    a, b = random.choices(stops, k=2)
+    if a[0] == b[0]:
+        continue
+    d = haversine(*a[1:], *b[1:])
+    if d > 40000.0:
+        continue
+    i = int(d // 1000)
+    bins[i] += 1
+    pairs[i].append((a[0], b[0], d))
+assert min(bins) >= 125
+
+query_list = []
+for i in range(40):
+    for j in range(125):
+        a, b, _ = pairs[i][j]
+        t = random.randint(0, 86400)
+        query_list.append((a, b, t))
+
+random.shuffle(query_list)
+queries = Queries()
+for a, b, t in query_list:
+    queries.add_query(a, b, t)
+queries.write(args.output)
