@@ -30,8 +30,12 @@ def check_journey(reconstructed_journey, from_node_id, to_node_id, departure_tim
             current_time = part.arrival_time
         else:
             assert type(part) is Path
-            prev_node = part.node_a_id
-            next_node = part.node_b_id
+            if current_node == part.node_a_id:
+                prev_node = part.node_a_id
+                next_node = part.node_b_id
+            else:
+                prev_node = part.node_b_id
+                next_node = part.node_a_id
             current_time += part.duration
 
         if prev_node != current_node:

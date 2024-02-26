@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+
+import matplotlib.pyplot as plt
+
+from benchmark import Network, Queries, Results
+
+from tools.geo.util import haversine
+from tools.util import reconstruct_journey, check_journey, print_reconstructed
+
+
+def average(l):
+    return (sum(l) - min(l) - max(l)) / (len(l) - 2)
+
+
+network = Network.read('data/berlin/berlin-t5m.network')
+queries = Queries.read('data/berlin/berlin-t5m.queries')
+results = Results.read('data/berlin/berlin-t5m-csa.results')
+results_opt = Results.read('data/berlin/berlin-t5m-csa_opt.results')
+
+print(f"Preprocessing took: {average(results.preprocessing_results) / 1000000:.3f} ms")
+print(f"Preprocessing took: {average(results_opt.preprocessing_results) / 1000000:.3f} ms (opt)")
+
+x, y, y_opt = [], [], []  # x = runtime, y = distance
+for query_index in results.query_results:
+    dep_time = queries.queries[query_index].departure_time
+    dep_node_id = queries.queries[query_index].from_node_id
+    arr_node_id = queries.queries[query_index].to_node_id
+    dep_node = network.nodes[dep_node_id]
+    arr_node = network.nodes[arr_node_id]
+
+    # Check the journey!
+    for result in [results.query_results[query_index], results_opt.query_results[query_index]]:
+        for journey in result[0].journeys:
+            reconstructed = reconstruct_journey(network, journey)
+            legal, logic, arrival = check_journey(reconstructed, dep_node_id, arr_node_id, dep_time)
+            if not legal or not logic or arrival < 0:
+                print(legal, logic, arrival)
+                print_reconstructed(reconstructed)
+
+    distance = haversine(dep_node.latitude, dep_node.longitude, arr_node.latitude, arr_node.longitude)
+    runtime = average([results.query_results[query_index][i].runtime_ns for i in range(len(results.query_results[query_index]))]) / 1000000
+    runtime_opt = average([results_opt.query_results[query_index][i].runtime_ns for i in range(len(results_opt.query_results[query_index]))]) / 1000000
+
+    x.append(distance)
+    y.append(runtime)
+    y_opt.append(runtime_opt)
+
+print(f"Average runtime: {sum(y) / len(y)} ms")
+print(f"Average runtime: {sum(y_opt) / len(y_opt)} ms (opt)")
+
+plt.scatter(x, y, c='r', marker='.', label='CSA unoptimized')
+plt.scatter(x, y_opt, c='b', marker='.', label='CSA optimized')
+plt.xlim(0, 40000)
+plt.title("Connection Scan Algorithm on Berlin")
+plt.xlabel("Distance in KM")
+plt.xticks([i*1000 for i in range(0, 41, 5)], [f'{i}' for i in range(0, 41, 5)])
+plt.ylabel("Runtime in ms")
+plt.legend()
+plt.show()
+
+# Just CSA
+plt.scatter(x, y, c='r', marker='.', label='CSA unoptimized')
+plt.xlim(0, 40000)
+plt.title("Connection Scan Algorithm on Berlin")
+plt.xlabel("Distance in KM")
+plt.xticks([i*1000 for i in range(0, 41, 5)], [f'{i}' for i in range(0, 41, 5)])
+plt.ylabel("Runtime in ms")
+plt.legend()
+plt.show()
+
+# Just CSA_OPT
+plt.scatter(x, y_opt, c='b', marker='.', label='CSA optimized')
+plt.xlim(0, 40000)
+plt.title("Connection Scan Algorithm on Berlin")
+plt.xlabel("Distance in KM")
+plt.xticks([i*1000 for i in range(0, 41, 5)], [f'{i}' for i in range(0, 41, 5)])
+plt.ylabel("Runtime in ms")
+plt.legend()
+plt.show()
