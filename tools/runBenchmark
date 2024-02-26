@@ -42,11 +42,13 @@ def main():
     # Read the network and queries into memory.
     network = Network.read(args.network_file)
     queries = Queries.read(args.queries_file)
+    results = Results()
 
     # Initialize the benchmark and run it.
     try:
-        benchmark = Benchmark(network, queries, args.algorithm)
-        results: Results = benchmark.run_benchmark()
+        for _ in range(5):
+            benchmark = Benchmark(network, queries, args.algorithm)
+            benchmark.run_benchmark(results)
     except Exception as e:
         print(f"An exception occurred during the benchmark:\n\t{e}")
         exit(-1)

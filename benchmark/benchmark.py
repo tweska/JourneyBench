@@ -16,9 +16,7 @@ class Benchmark(BenchmarkCore):
         if super().set_algorithm(shared_object_filename) != 0:
             raise Exception(f"Could not load algorithm '{algorithm}' from shared object file '{shared_object_filename}'!")
 
-    def run_benchmark(self) -> Results:
-        results = Results()
-
+    def run_benchmark(self, results: Results) -> Results:
         # Run the preprocessing for the algorithm.
         preprocessing_result = self.run_preprocessing()
         if not preprocessing_result:
