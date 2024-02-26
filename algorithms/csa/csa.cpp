@@ -88,24 +88,28 @@ namespace CSA {
                 prev_conn[n_conn.trip_id] = &conns[i];
             }
 
-            /* Load the paths. */
-            for (u32 i = 0, count = 0, last_stop = INF; i < network->paths.size(); i++, count--) {
+            /* Load the (bidirectional) paths. */
+            for (u32 i = 0; i < network->paths.size(); i++) {
                 JB::Path n_path = network->paths[i];
-
-                if (n_path.node_a_id != last_stop) {
-                    assert(count == 0);
-                    for (u32 j = i; j < network->paths.size(); j++) {
-                        if (network->paths[j].node_a_id != n_path.node_a_id) { break; }
-                        count++;
-                    }
-                    path_count[n_path.node_a_id] = count;
-                    paths[n_path.node_a_id] = new Path[count]();
-                    last_stop = n_path.node_a_id;
-                }
-
-                paths[n_path.node_a_id][path_count[n_path.node_a_id] - count] = {
+                path_count[n_path.node_a_id]++;
+                path_count[n_path.node_b_id]++;
+            }
+            u32 path_count_tmp[stop_count];
+            fill_n(path_count_tmp, stop_count, 0);
+            for (u32 i = 0; i < stop_count; i++) {
+                paths[i] = new Path[path_count[i]]();
+            }
+            for (u32 i = 0; i < network->paths.size(); i++) {
+                JB::Path n_path = network->paths[i];
+                paths[n_path.node_a_id][path_count_tmp[n_path.node_a_id]++] = {
                         n_path.node_a_id,
                         n_path.node_b_id,
+                        n_path.duration,
+                        i
+                };
+                paths[n_path.node_b_id][path_count_tmp[n_path.node_b_id]++] = {
+                        n_path.node_b_id,
+                        n_path.node_a_id,
                         n_path.duration,
                         i
                 };
