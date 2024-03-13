@@ -13,10 +13,10 @@ def average(l):
     return (sum(l) - min(l) - max(l)) / (len(l) - 2)
 
 
-network = Network.read('data/berlin/berlin-t5m.network')
-queries = Queries.read('data/berlin/berlin-t5m.queries')
-results = Results.read('data/berlin/berlin-t5m-csa.results')
-results_opt = Results.read('data/berlin/berlin-t5m-csa_opt.results')
+network = Network.read('expiriment/data/berlin-t5m.network')
+queries = Queries.read('expiriment/data/berlin-t5m.queries')
+results = Results.read('expiriment/data/berlin-t5m-csa.results')
+results_opt = Results.read('expiriment/data/berlin-t5m-csa_opt.results')
 
 print(f"Preprocessing took: {average(results.preprocessing_results) / 1000000:.3f} ms")
 print(f"Preprocessing took: {average(results_opt.preprocessing_results) / 1000000:.3f} ms (opt)")
